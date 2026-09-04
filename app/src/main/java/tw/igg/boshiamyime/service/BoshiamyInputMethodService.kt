@@ -89,14 +89,10 @@ class BoshiamyInputMethodService : InputMethodService(),
         btnMode.setOnClickListener { toggleKeyboardMode() }
         btnCandidateDelete.setOnTouchListener(deleteTouchListener)
         btnSymbol.setOnClickListener {
-            previousKeyboardMode = engineManager.keyboardMode
-            engineManager.switchKeyboard(KeyboardMode.SYMBOL)
-            keyboardView.setLayout(KeyboardView.KeyboardLayout.SYMBOL)
+            openPanel(KeyboardMode.SYMBOL, KeyboardView.KeyboardLayout.SYMBOL)
         }
         btnEmoji.setOnClickListener {
-            previousKeyboardMode = engineManager.keyboardMode
-            engineManager.switchKeyboard(KeyboardMode.EMOJI)
-            keyboardView.setLayout(KeyboardView.KeyboardLayout.EMOJI)
+            openPanel(KeyboardMode.EMOJI, KeyboardView.KeyboardLayout.EMOJI)
         }
 
         updateTopBarButtons()
@@ -213,9 +209,7 @@ class BoshiamyInputMethodService : InputMethodService(),
                 toggleKeyboardMode()
             }
             "SYM" -> {
-                previousKeyboardMode = engineManager.keyboardMode
-                engineManager.switchKeyboard(KeyboardMode.SYMBOL)
-                keyboardView.setLayout(KeyboardView.KeyboardLayout.SYMBOL)
+                openPanel(KeyboardMode.SYMBOL, KeyboardView.KeyboardLayout.SYMBOL)
             }
             "✕" -> {
                 returnToPreviousKeyboard()
@@ -486,6 +480,15 @@ class BoshiamyInputMethodService : InputMethodService(),
         isShifted = false
         keyboardView.setShifted(false)
         updateTopBarButtons()
+    }
+
+    private fun openPanel(mode: KeyboardMode, layout: KeyboardView.KeyboardLayout) {
+        if (engineManager.keyboardMode != KeyboardMode.SYMBOL &&
+            engineManager.keyboardMode != KeyboardMode.EMOJI) {
+            previousKeyboardMode = engineManager.keyboardMode
+        }
+        engineManager.switchKeyboard(mode)
+        keyboardView.setLayout(layout)
     }
 
     private fun returnToPreviousKeyboard() {
