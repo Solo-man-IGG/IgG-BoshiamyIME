@@ -32,6 +32,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private lateinit var keyboardView: KeyboardView
     private lateinit var candidateBar: CandidateBarView
     private lateinit var container: View
+    private lateinit var topBar: View
     private lateinit var btnCandidateDelete: TextView
 
     private lateinit var btnMode: TextView
@@ -80,6 +81,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         btnMode = container.findViewById(R.id.btn_mode)
         btnSymbol = container.findViewById(R.id.btn_symbol)
         btnEmoji = container.findViewById(R.id.btn_emoji)
+        topBar = container.findViewById(R.id.top_bar)
 
         keyboardView.setOnKeyPressListener(this)
         candidateBar.setOnCandidateClickListener(this)
@@ -115,6 +117,9 @@ class BoshiamyInputMethodService : InputMethodService(),
         val keyPressed = prefs.getInt("theme_key_pressed", 0xFFCCCCCC.toInt())
         val border = prefs.getInt("theme_border", 0xFFB0B0B0.toInt())
         keyboardView.setThemeColors(bg, text, keyBg, keyPressed, border)
+        container.setBackgroundColor(bg)
+        topBar.setBackgroundColor(bg)
+        candidateBar.setPanelBackgroundColor(bg)
     }
 
     override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {

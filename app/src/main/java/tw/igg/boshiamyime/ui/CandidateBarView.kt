@@ -77,6 +77,11 @@ class CandidateBarView @JvmOverloads constructor(
         listener = l
     }
 
+    fun setPanelBackgroundColor(color: Int) {
+        backgroundPaint.color = color
+        invalidate()
+    }
+
     fun setCandidates(newCandidates: List<Candidate>) {
         errorHideHandler.removeCallbacksAndMessages(null)
         errorText = null
