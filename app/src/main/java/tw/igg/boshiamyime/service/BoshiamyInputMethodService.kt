@@ -127,6 +127,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         zhuyinInput = ""
         lastCommittedChar = ""
         candidateBar.setCandidates(emptyList())
+        keyboardView.setSpaceHint("")
         isShifted = false
         isCapsLock = false
         lastShiftTime = 0L
@@ -326,6 +327,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun updateCandidates() {
         val allCandidates = engineManager.getCandidates()
         candidateBar.setCandidates(allCandidates)
+        keyboardView.setSpaceHint("")
 
         val currentInput = engineManager.currentInput
         showComposition(currentInput)
@@ -339,6 +341,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun updateZhuyinCandidates() {
         val candidates = zhuyinEngine.lookupPrefix(zhuyinInput)
         candidateBar.setCandidates(candidates)
+        keyboardView.setSpaceHint("")
 
         showComposition(zhuyinEngine.codeToBopomofo(zhuyinInput))
         if (zhuyinInput.isNotEmpty()) {
@@ -426,18 +429,15 @@ class BoshiamyInputMethodService : InputMethodService(),
         engineManager.clearInput()
         zhuyinInput = ""
 
+        val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
+        keyboardView.setSpaceHint(bopomofo)
+
         val associations = lookupEngine.lookupAssociations(candidate.char)
         if (associations.isNotEmpty()) {
             candidateBar.setCandidates(associations)
             candidateBar.visibility = View.VISIBLE
         } else {
-            val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
-            if (bopomofo.isNotEmpty()) {
-                candidateBar.showBopomofo(bopomofo)
-                candidateBar.visibility = View.VISIBLE
-            } else {
-                candidateBar.setCandidates(emptyList())
-            }
+            candidateBar.setCandidates(emptyList())
         }
     }
 
@@ -458,6 +458,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         zhuyinInput = ""
         lastCommittedChar = ""
         candidateBar.setCandidates(emptyList())
+        keyboardView.setSpaceHint("")
         isShifted = false
         isCapsLock = false
         lastShiftTime = 0L

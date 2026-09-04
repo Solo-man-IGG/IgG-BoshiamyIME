@@ -76,6 +76,19 @@ class KeyboardView @JvmOverloads constructor(
     var isShifted = false
         private set
 
+    private var spaceHint = ""
+    private var spaceHintScrollX = 0f
+    private var spaceDragStartX = 0f
+    private var spaceDragActive = false
+
+    fun setSpaceHint(hint: String) {
+        if (spaceHint != hint) {
+            spaceHint = hint
+            spaceHintScrollX = 0f
+            invalidate()
+        }
+    }
+
     enum class KeyboardLayout { T9, QWERTY, ZHUYIN, NUMBER, SYMBOL, EMOJI }
 
     data class KeyData(
@@ -332,6 +345,26 @@ class KeyboardView @JvmOverloads constructor(
                     canvas.drawText(
                         key.subLabel, centerX, centerY + 34f, keySubTextPaint
                     )
+                } else if (key.label == "space" && spaceHint.isNotEmpty()) {
+                    canvas.drawText(
+                        displayLabel, centerX, centerY - 14f, keyTextPaint
+                    )
+                    val innerLeft = tempRect.left + padding
+                    val innerRight = tempRect.right - padding
+                    val innerWidth = innerRight - innerLeft
+                    val hintWidth = keySubTextPaint.measureText(spaceHint)
+                    val maxScroll = (hintWidth - innerWidth).coerceAtLeast(0f)
+                    if (spaceHintScrollX > maxScroll) spaceHintScrollX = maxScroll
+                    if (spaceHintScrollX < 0f) spaceHintScrollX = 0f
+                    canvas.save()
+                    canvas.clipRect(innerLeft, tempRect.top, innerRight, tempRect.bottom)
+                    canvas.drawText(
+                        spaceHint,
+                        innerLeft - spaceHintScrollX,
+                        centerY + 30f,
+                        keySubTextPaint
+                    )
+                    canvas.restore()
                 } else {
                     canvas.drawText(
                         displayLabel, centerX, centerY + 14f, keyTextPaint
@@ -356,6 +389,8 @@ class KeyboardView @JvmOverloads constructor(
                     pressedKey = key
                     pressTime = System.currentTimeMillis()
                     longPressTriggered = false
+                    spaceDragStartX = event.x
+                    spaceDragActive = false
                     longPressHandler.postDelayed({
                         if (pressedKey == key && !longPressTriggered) {
                             longPressTriggered = true
@@ -368,13 +403,24 @@ class KeyboardView @JvmOverloads constructor(
                     return true
                 }
             }
+            MotionEvent.ACTION_MOVE -> {
+                if (pressedKey == "space" && !longPressTriggered && spaceOverflowWidth() > 0f) {
+                    val dx = event.x - spaceDragStartX
+                    if (Math.abs(dx) > 8f) {
+                        spaceDragActive = true
+                        spaceHintScrollX = (spaceHintScrollX - dx).coerceIn(0f, spaceOverflowWidth())
+                        spaceDragStartX = event.x
+                        invalidate()
+                    }
+                }
+            }
             MotionEvent.ACTION_UP -> {
                 val key = getKeyAt(event.x, event.y)
                 longPressHandler.removeCallbacksAndMessages(null)
                 pressedKey = null
                 invalidate()
 
-                if (key != null && !longPressTriggered) {
+                if (key != null && !longPressTriggered && !spaceDragActive) {
                     performClick()
                     listener?.onKeyPress(key)
                     return true
@@ -383,10 +429,20 @@ class KeyboardView @JvmOverloads constructor(
             MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacksAndMessages(null)
                 pressedKey = null
+                spaceDragActive = false
                 invalidate()
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun spaceOverflowWidth(): Float {
+        if (spaceHint.isEmpty()) return 0f
+        val rect = keyRects["space"] ?: return 0f
+        val padding = (4 * resources.displayMetrics.density).toInt()
+        val innerWidth = rect.width() - padding * 2
+        val hintWidth = keySubTextPaint.measureText(spaceHint)
+        return (hintWidth - innerWidth).coerceAtLeast(0f)
     }
 
     private fun getKeyAt(x: Float, y: Float): String? {
