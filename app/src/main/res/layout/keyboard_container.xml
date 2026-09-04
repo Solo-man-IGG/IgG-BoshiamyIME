@@ -26,29 +26,6 @@
             android:layout_marginEnd="4dp"
             android:background="@drawable/key_ripple" />
 
-        <TextView
-            android:id="@+id/btn_chinese"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="中"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:paddingHorizontal="12dp"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/key_ripple" />
-
-        <TextView
-            android:id="@+id/btn_width"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="半形"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:paddingHorizontal="12dp"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/key_ripple" />
-
         <!-- 符號快捷鍵 -->
         <TextView
             android:id="@+id/btn_symbol"

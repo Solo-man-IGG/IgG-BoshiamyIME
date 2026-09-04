@@ -35,15 +35,11 @@ class BoshiamyInputMethodService : InputMethodService(),
     private lateinit var btnCandidateDelete: TextView
 
     private lateinit var btnMode: TextView
-    private lateinit var btnChinese: TextView
-    private lateinit var btnWidth: TextView
     private lateinit var btnSymbol: TextView
     private lateinit var btnEmoji: TextView
 
     private lateinit var prefs: SharedPreferences
 
-    private var isChineseMode = true
-    private var isFullWidth = false
     private var isShifted = false
     private var isCapsLock = false
     private var lastShiftTime = 0L
@@ -82,8 +78,6 @@ class BoshiamyInputMethodService : InputMethodService(),
         candidateBar = container.findViewById(R.id.candidate_bar)
         btnCandidateDelete = container.findViewById(R.id.btn_candidate_delete)
         btnMode = container.findViewById(R.id.btn_mode)
-        btnChinese = container.findViewById(R.id.btn_chinese)
-        btnWidth = container.findViewById(R.id.btn_width)
         btnSymbol = container.findViewById(R.id.btn_symbol)
         btnEmoji = container.findViewById(R.id.btn_emoji)
 
@@ -93,8 +87,6 @@ class BoshiamyInputMethodService : InputMethodService(),
         loadThemeColors()
 
         btnMode.setOnClickListener { toggleKeyboardMode() }
-        btnChinese.setOnClickListener { toggleChineseMode() }
-        btnWidth.setOnClickListener { toggleWidthMode() }
         btnCandidateDelete.setOnTouchListener(deleteTouchListener)
         btnSymbol.setOnClickListener {
             previousKeyboardMode = engineManager.keyboardMode
@@ -238,18 +230,7 @@ class BoshiamyInputMethodService : InputMethodService(),
                     returnToPreviousKeyboard()
                     return
                 }
-                if (!isChineseMode) {
-                    val output = if (isShifted && key.length == 1) {
-                        key.uppercase()
-                    } else {
-                        key
-                    }
-                    inputConnection.commitText(output, 1)
-                    if (isShifted && !isCapsLock) {
-                        isShifted = false
-                        keyboardView.setShifted(false)
-                    }
-                } else if (engineManager.keyboardMode == KeyboardMode.ZHUYIN) {
+                if (engineManager.keyboardMode == KeyboardMode.ZHUYIN) {
                     zhuyinInput += zhuyinEngine.symbolToCode(key)
                     updateZhuyinCandidates()
                 } else {
@@ -445,13 +426,18 @@ class BoshiamyInputMethodService : InputMethodService(),
         engineManager.clearInput()
         zhuyinInput = ""
 
-        val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
-        if (bopomofo.isNotEmpty()) {
-            candidateBar.showBopomofo(bopomofo)
+        val associations = lookupEngine.lookupAssociations(candidate.char)
+        if (associations.isNotEmpty()) {
+            candidateBar.setCandidates(associations)
             candidateBar.visibility = View.VISIBLE
         } else {
-            candidateBar.setCandidates(emptyList())
-            showAssociations(candidate.char)
+            val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
+            if (bopomofo.isNotEmpty()) {
+                candidateBar.showBopomofo(bopomofo)
+                candidateBar.visibility = View.VISIBLE
+            } else {
+                candidateBar.setCandidates(emptyList())
+            }
         }
     }
 
@@ -463,14 +449,6 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     private fun saveLearnedAssociations() {
         dictionaryManager.saveLearnedAssociations(prefs)
-    }
-
-    private fun showAssociations(char: String) {
-        val associations = lookupEngine.lookupAssociations(char)
-        if (associations.isNotEmpty()) {
-            candidateBar.setCandidates(associations)
-            candidateBar.visibility = View.VISIBLE
-        }
     }
 
     override fun onFinishInput() {
@@ -509,21 +487,6 @@ class BoshiamyInputMethodService : InputMethodService(),
         updateTopBarButtons()
     }
 
-    private fun toggleChineseMode() {
-        isChineseMode = !isChineseMode
-        engineManager.clearInput()
-        zhuyinInput = ""
-        candidateBar.setCandidates(emptyList())
-        isShifted = false
-        keyboardView.setShifted(false)
-        updateTopBarButtons()
-    }
-
-    private fun toggleWidthMode() {
-        isFullWidth = !isFullWidth
-        updateTopBarButtons()
-    }
-
     private fun returnToPreviousKeyboard() {
         engineManager.switchKeyboard(previousKeyboardMode)
         val layout = when (previousKeyboardMode) {
@@ -538,7 +501,5 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     private fun updateTopBarButtons() {
         btnMode.text = engineManager.keyboardMode.displayName
-        btnChinese.text = if (isChineseMode) "中" else "EN"
-        btnWidth.text = if (isFullWidth) "全形" else "半形"
     }
 }
