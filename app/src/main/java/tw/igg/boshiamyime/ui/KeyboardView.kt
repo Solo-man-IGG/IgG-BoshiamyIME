@@ -65,6 +65,13 @@ class KeyboardView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
     }
 
+    private val keyTabTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#1A73E8")
+        textSize = 22f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
     private val keyboardBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.keyboard_background)
     }
@@ -75,6 +82,53 @@ class KeyboardView @JvmOverloads constructor(
     private var currentLayout: KeyboardLayout = KeyboardLayout.T9
     var isShifted = false
         private set
+
+    private var emojiCategory = 0
+
+    fun setEmojiCategory(index: Int) {
+        if (emojiCategory != index && currentLayout == KeyboardLayout.EMOJI) {
+            emojiCategory = index.coerceIn(emojiCategories.indices)
+            keys = createLayout(KeyboardLayout.EMOJI)
+            keyRects.clear()
+            requestLayout()
+            invalidate()
+        }
+    }
+
+    private val emojiCategories = listOf(
+        Category("表情", listOf(
+            listOf("😀","😂","😍","😊","🤣","🥰","😘","😜","🤗","😌"),
+            listOf("😇","😏","😎","🤩","🥳","😭","😅","😉","🙃","😴"),
+            listOf("🤤","😷","🤒","🤕","🤢","🤮","🥵","🥶","😱","😳"),
+            listOf("🤪","🤡","👻","💀","😺","😸","😹","😻","🙈","🙉")
+        )),
+        Category("手勢", listOf(
+            listOf("👍","👎","👏","🙌","👐","🤝","🙏","✌️","🤘","👌"),
+            listOf("🤙","👈","👉","👆","👇","🖕","✊","👊","🤛","🤜"),
+            listOf("💪","🦾","🖐️","👋","🤚","🫰","🫵","🫶","👐🏻","🤌"),
+            listOf("🙆","🙅","💁","🙋","🤦","🤷","🕺","💃","🧍","🏃")
+        )),
+        Category("動物", listOf(
+            listOf("🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯"),
+            listOf("🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆"),
+            listOf("🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🦋","🐌"),
+            listOf("🐢","🐍","🦎","🦈","🐬","🐳","🐋","🐊","🐅","🦓")
+        )),
+        Category("食物", listOf(
+            listOf("🍎","🍊","🍋","🍌","🍉","🍇","🍓","🍒","🍑","🥭"),
+            listOf("🍍","🥥","🥝","🍅","🥑","🥦","🥬","🥒","🌽","🥕"),
+            listOf("🍞","🥖","🥨","🥐","🧀","🍳","🥓","🥩","🍗","🍖"),
+            listOf("🍔","🍟","🍕","🌭","🥪","🌮","🌯","🍜","🍣","🍦")
+        )),
+        Category("物品", listOf(
+            listOf("📱","💻","⌨️","🖥️","🖨️","🖱️","💾","📷","🎬","📺"),
+            listOf("☎️","📞","📱","🔋","🔌","💡","🔦","🕯️","📚","📖"),
+            listOf("✏️","🖊️","🖋️","📝","📌","📍","📎","✂️","🔑","🔒"),
+            listOf("🎁","🎈","🎉","🎊","💝","💐","👑","🧸","🎮","⚽")
+        ))
+    )
+
+    private data class Category(val name: String, val rows: List<List<String>>)
 
     private var spaceHint = ""
     private var spaceHintScrollX = 0f
@@ -257,36 +311,18 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("space", width = 4), KeyData("⏎")
                 )
             )
-            KeyboardLayout.EMOJI -> listOf(
-                listOf(
-                    KeyData("😀"), KeyData("😂"), KeyData("😍"),
-                    KeyData("🤔"), KeyData("😎"), KeyData("👍"),
-                    KeyData("❤️"), KeyData("🔥"), KeyData("⭐"),
-                    KeyData("🎉")
-                ),
-                listOf(
-                    KeyData("😊"), KeyData("🤣"), KeyData("🥰"),
-                    KeyData("😘"), KeyData("😜"), KeyData("🤗"),
-                    KeyData("😌"), KeyData("😴"), KeyData("🤓"),
-                    KeyData("😇")
-                ),
-                listOf(
-                    KeyData("💪"), KeyData("🙌"), KeyData("👏"),
-                    KeyData("🤝"), KeyData("👐"), KeyData("🤲"),
-                    KeyData("🙏"), KeyData("✌️"), KeyData("🤘"),
-                    KeyData("👌")
-                ),
-                listOf(
-                    KeyData("📱"), KeyData("💻"), KeyData("⌨️"),
-                    KeyData("🖥️"), KeyData("🖨️"), KeyData("🖱️"),
-                    KeyData("💾"), KeyData("💿"), KeyData("📷"),
-                    KeyData("🎬")
-                ),
-                listOf(
-                    KeyData("SYM", width = 2), KeyData("✕", "關閉"),
-                    KeyData("space", width = 4), KeyData("⏎")
+            KeyboardLayout.EMOJI -> {
+                val cat = emojiCategories[emojiCategory]
+                val tabRow = emojiCategories.mapIndexed { i, c ->
+                    KeyData(c.name, width = 2, isAction = true)
+                }
+                val rows = cat.rows.map { row ->
+                    row.map { KeyData(it) }
+                }
+                rows + listOf(
+                    tabRow + listOf(KeyData("✕", "關閉"), KeyData("space", width = 4), KeyData("⏎"))
                 )
-            )
+            }
         }
     }
 
@@ -323,7 +359,11 @@ class KeyboardView @JvmOverloads constructor(
                     ((rowIndex + 1) * keyHeight - padding).toFloat()
                 )
 
-                val paint = if (key.label == pressedKey) keyPressedBackground else keyBackground
+                val paint = when {
+                    key.label == pressedKey -> keyPressedBackground
+                    currentLayout == KeyboardLayout.EMOJI && isActiveEmojiTab(key.label) -> keyPressedBackground
+                    else -> keyBackground
+                }
                 canvas.drawRoundRect(tempRect, 12f, 12f, paint)
                 canvas.drawRoundRect(tempRect, 12f, 12f, keyBorderPaint)
 
@@ -365,6 +405,10 @@ class KeyboardView @JvmOverloads constructor(
                         keySubTextPaint
                     )
                     canvas.restore()
+                } else if (currentLayout == KeyboardLayout.EMOJI && isEmojiTabLabel(key.label)) {
+                    canvas.drawText(
+                        displayLabel, centerX, centerY + 8f, keyTabTextPaint
+                    )
                 } else {
                     canvas.drawText(
                         displayLabel, centerX, centerY + 14f, keyTextPaint
@@ -421,6 +465,13 @@ class KeyboardView @JvmOverloads constructor(
                 invalidate()
 
                 if (key != null && !longPressTriggered && !spaceDragActive) {
+                    if (currentLayout == KeyboardLayout.EMOJI) {
+                        val tabIndex = resolveEmojiTabKey(key)
+                        if (tabIndex >= 0) {
+                            setEmojiCategory(tabIndex)
+                            return true
+                        }
+                    }
                     performClick()
                     listener?.onKeyPress(key)
                     return true
@@ -452,5 +503,20 @@ class KeyboardView @JvmOverloads constructor(
             }
         }
         return null
+    }
+
+    private fun resolveEmojiTabKey(key: String): Int {
+        for ((i, c) in emojiCategories.withIndex()) {
+            if (key == c.name) return i
+        }
+        return -1
+    }
+
+    private fun isEmojiTabLabel(label: String): Boolean {
+        return emojiCategories.any { it.name == label }
+    }
+
+    private fun isActiveEmojiTab(label: String): Boolean {
+        return label == emojiCategories[emojiCategory].name
     }
 }
