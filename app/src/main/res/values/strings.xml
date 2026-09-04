@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">璦閣輸入法</string>
+    <string name="settings_title">Boshiamy 設定</string>
+    <string name="keyboard_t9">T9</string>
+    <string name="keyboard_qwerty">QWERTY</string>
+    <string name="keyboard_zhuyin">注音</string>
+    <string name="mode_standard">標準</string>
+    <string name="mode_simplified">簡速</string>
+    <string name="mode_eten">倚天</string>
+    <string name="switch_to_chinese">中</string>
+    <string name="switch_to_english">EN</string>
+    <string name="full_width">全形</string>
+    <string name="half_width">半形</string>
+    <string name="candidate_space_hint">選字</string>
+</resources>

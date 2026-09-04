@@ -1,0 +1,30 @@
+NOTICE
+======
+
+Code license: GPL-3.0 (see LICENSE)
+
+Bundled dictionary / data attribution
+-------------------------------------
+
+The code in this repository is licensed under GPL-3.0. In addition, the
+bundled dictionary and frequency data under `app/src/main/assets/tables/`
+is generated from the following open data sources, each retaining its own
+license obligations. Please keep these attributions when redistributing.
+
+1) Word list & character frequency statistics
+   - Source: samejack/sc-dictionary
+     https://github.com/samejack/sc-dictionary  (~1.1M words)
+   - License: CC BY 3.0  https://creativecommons.org/licenses/by/3.0/
+   - Used to build:
+       * associations.json  (association / 聯想詞, 10k+ keys, 111k+ entries)
+       * zhuyin/dictionary.json character frequencies (candidate ordering)
+
+2) Simplified character mapping (for zhuyin candidate demotion)
+   - Source: OpenCC STCharacters.txt
+     https://github.com/BYVoid/OpenCC
+   - License: Apache-2.0  https://www.apache.org/licenses/LICENSE-2.0
+
+Generation methodology notes are described in docs/ORIGINAL-TECH-PLAN.md.
+
+Redistribution of the bundled data must comply with CC BY 3.0 (attribution)
+and Apache-2.0 requirements respectively.
