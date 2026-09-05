@@ -37,12 +37,7 @@ class T9Engine(private val dictionary: DictionaryManager) {
     fun predict(t9Sequence: String): List<Candidate> {
         if (t9Sequence.isEmpty()) return emptyList()
 
-        val allEntries = dictionary.getAllEntries()
-
-        val exactMatches = allEntries
-            .filter { entry ->
-                entry.t9.isNotEmpty() && entry.t9 == t9Sequence
-            }
+        val exactMatches = dictionary.lookupT9(t9Sequence)
             .map { entry ->
                 Candidate(
                     code = entry.code,
@@ -58,12 +53,7 @@ class T9Engine(private val dictionary: DictionaryManager) {
                 .take(MAX_CANDIDATES)
         }
 
-        return allEntries
-            .filter { entry ->
-                if (entry.code.isEmpty()) return@filter false
-                val entryT9 = codeToT9(entry.code)
-                entryT9.startsWith(t9Sequence)
-            }
+        return dictionary.lookupT9Prefix(t9Sequence)
             .map { entry ->
                 Candidate(
                     code = entry.code,

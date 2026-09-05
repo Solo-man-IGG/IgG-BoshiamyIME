@@ -13,50 +13,71 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Boshiamy IME 設定"
+            android:text="璦閣輸入法 設定"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="#202124"
             android:layout_marginBottom="24dp" />
 
-        <!-- 輸入模式 -->
+        <!-- ===================== 輸入設定 ===================== -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="輸入模式"
+            android:text="輸入設定"
             android:textSize="14sp"
             android:textColor="#1A73E8"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="12dp" />
 
-        <RadioGroup
-            android:id="@+id/rg_input_mode"
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:text="預設輸入模式"
+            android:textSize="14sp"
+            android:textColor="#5F6368"
+            android:layout_marginBottom="4dp" />
 
-            <RadioButton
-                android:id="@+id/rb_t9"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="T9 大按鍵模式（建議）"
-                android:textSize="16sp"
-                android:checked="true" />
+        <Spinner
+            android:id="@+id/spinner_input_mode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="12dp" />
 
-            <RadioButton
-                android:id="@+id/rb_qwerty"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="QWERTY 鍵盤模式"
-                android:textSize="16sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="鍵盤大小"
+            android:textSize="14sp"
+            android:textColor="#5F6368"
+            android:layout_marginBottom="4dp" />
 
-            <RadioButton
-                android:id="@+id/rb_zhuyin"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="注音輸入模式（備用）"
-                android:textSize="16sp" />
-        </RadioGroup>
+        <Spinner
+            android:id="@+id/spinner_keyboard_scale"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="12dp" />
+
+        <Switch
+            android:id="@+id/switch_vibrate"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="按鍵震動回饋"
+            android:textSize="16sp" />
+
+        <Switch
+            android:id="@+id/switch_sound"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="按鍵音效"
+            android:textSize="16sp" />
+
+        <Switch
+            android:id="@+id/switch_full_width"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="全形輸出（數字與符號）"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
 
         <View
             android:layout_width="match_parent"
@@ -64,44 +85,190 @@
             android:background="#E0E0E0"
             android:layout_marginBottom="16dp" />
 
-        <!-- 嘸蝦米模式 -->
+        <!-- ===================== 佈景主題 ===================== -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="嘸蝦米模式"
+            android:text="佈景主題"
             android:textSize="14sp"
             android:textColor="#1A73E8"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
 
-        <RadioGroup
-            android:id="@+id/rg_boshiamy_mode"
+        <tw.igg.boshiamyime.ui.KeyboardPreviewView
+            android:id="@+id/preview_keyboard"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="主題模式"
+            android:textSize="14sp"
+            android:textColor="#5F6368"
+            android:layout_marginBottom="4dp" />
+
+        <Spinner
+            android:id="@+id/spinner_theme_mode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:id="@+id/custom_theme_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:orientation="vertical">
 
-            <RadioButton
-                android:id="@+id/rb_standard"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="鍵盤背景色"
+                android:textSize="14sp"
+                android:textColor="#5F6368" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="標準模式"
-                android:textSize="16sp"
-                android:checked="true" />
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
 
-            <RadioButton
-                android:id="@+id/rb_simplified"
+                <Button
+                    android:id="@+id/btn_theme_bg"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="match_parent"
+                    android:text="色塊"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/et_theme_bg"
+                    android:layout_width="0dp"
+                    android:layout_weight="1.4"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:hint="#RRGGBB"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:digits="0123456789ABCDEFabcdef#"
+                    android:gravity="center_horizontal"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="按鍵文字色"
+                android:textSize="14sp"
+                android:textColor="#5F6368" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="簡速模式"
-                android:textSize="16sp" />
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
 
-            <RadioButton
-                android:id="@+id/rb_eten"
+                <Button
+                    android:id="@+id/btn_theme_text"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="match_parent"
+                    android:text="色塊"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/et_theme_text"
+                    android:layout_width="0dp"
+                    android:layout_weight="1.4"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:hint="#RRGGBB"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:digits="0123456789ABCDEFabcdef#"
+                    android:gravity="center_horizontal"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="按鍵背景色"
+                android:textSize="14sp"
+                android:textColor="#5F6368" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="倚天模式"
-                android:textSize="16sp" />
-        </RadioGroup>
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_theme_keybg"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="match_parent"
+                    android:text="色塊"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/et_theme_keybg"
+                    android:layout_width="0dp"
+                    android:layout_weight="1.4"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:hint="#RRGGBB"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:digits="0123456789ABCDEFabcdef#"
+                    android:gravity="center_horizontal"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="按鍵框線色"
+                android:textSize="14sp"
+                android:textColor="#5F6368" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btn_theme_border"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="match_parent"
+                    android:text="色塊"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/et_theme_border"
+                    android:layout_width="0dp"
+                    android:layout_weight="1.4"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:hint="#RRGGBB"
+                    android:inputType="textCapCharacters"
+                    android:maxLines="1"
+                    android:digits="0123456789ABCDEFabcdef#"
+                    android:gravity="center_horizontal"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_theme_reset"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="恢復預設色彩"
+                android:textSize="14sp"
+                android:layout_marginBottom="16dp" />
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"
@@ -109,7 +276,7 @@
             android:background="#E0E0E0"
             android:layout_marginBottom="16dp" />
 
-        <!-- 碼表管理 -->
+        <!-- ===================== 碼表管理 ===================== -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -173,89 +340,39 @@
             android:background="#E0E0E0"
             android:layout_marginBottom="16dp" />
 
-        <!-- 佈景主題 -->
+        <!-- ===================== 資料管理 ===================== -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="佈景主題"
+            android:text="資料管理"
             android:textSize="14sp"
             android:textColor="#1A73E8"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
 
-        <LinearLayout
+        <Button
+            android:id="@+id/btn_clear_data"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_height="48dp"
+            android:text="清除學習資料（聯想詞）"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="鍵盤背景色"
-                android:textSize="14sp"
-                android:textColor="#5F6368" />
+        <Button
+            android:id="@+id/btn_export_settings"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="匯出設定"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
 
-            <Button
-                android:id="@+id/btn_theme_bg"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="選擇顏色"
-                android:textSize="14sp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="按鍵文字色"
-                android:textSize="14sp"
-                android:textColor="#5F6368" />
-
-            <Button
-                android:id="@+id/btn_theme_text"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="選擇顏色"
-                android:textSize="14sp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="按鍵背景色"
-                android:textSize="14sp"
-                android:textColor="#5F6368" />
-
-            <Button
-                android:id="@+id/btn_theme_keybg"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="選擇顏色"
-                android:textSize="14sp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="按鍵框線色"
-                android:textSize="14sp"
-                android:textColor="#5F6368" />
-
-            <Button
-                android:id="@+id/btn_theme_border"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="選擇顏色"
-                android:textSize="14sp"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_theme_reset"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="恢復預設色彩"
-                android:textSize="14sp" />
-        </LinearLayout>
+        <Button
+            android:id="@+id/btn_import_settings"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="匯入設定"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp" />
 
         <View
             android:layout_width="match_parent"
@@ -263,42 +380,7 @@
             android:background="#E0E0E0"
             android:layout_marginBottom="16dp" />
 
-        <!-- 其他設定 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="其他設定"
-            android:textSize="14sp"
-            android:textColor="#1A73E8"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <Switch
-            android:id="@+id/switch_full_width"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="預設全形輸出"
-            android:textSize="16sp"
-            android:layout_marginBottom="8dp" />
-
-        <Switch
-            android:id="@+id/switch_vibrate"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="按鍵震動回饋"
-            android:textSize="16sp"
-            android:checked="true"
-            android:layout_marginBottom="8dp" />
-
-        <Switch
-            android:id="@+id/switch_sound"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="按鍵音效"
-            android:textSize="16sp"
-            android:layout_marginBottom="24dp" />
-
-        <!-- 關於 -->
+        <!-- ===================== 關於 ===================== -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -311,7 +393,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Boshiamy IME v1.0.0&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;授權：Free for non-commercial use"
+            android:text="璦閣輸入法 v1.0.0&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
             android:textSize="13sp"
             android:textColor="#5F6368"
             android:lineSpacingExtra="4dp" />

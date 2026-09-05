@@ -20,6 +20,8 @@ class DictionaryManager(private val context: Context) {
     private val codeIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
     private val charIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
     private val t9Index = mutableMapOf<String, MutableList<DictionaryEntry>>()
+    private val codePrefixIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
+    private val t9PrefixIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
     private val associations = mutableMapOf<String, List<String>>()
     private val usageFrequency = mutableMapOf<String, Int>()
     private val learnedAssociations = mutableMapOf<String, MutableMap<String, Int>>()
@@ -111,6 +113,8 @@ class DictionaryManager(private val context: Context) {
         codeIndex.clear()
         charIndex.clear()
         t9Index.clear()
+        codePrefixIndex.clear()
+        t9PrefixIndex.clear()
         associations.clear()
         usageFrequency.clear()
         learnedAssociations.clear()
@@ -131,6 +135,8 @@ class DictionaryManager(private val context: Context) {
         codeIndex.clear()
         charIndex.clear()
         t9Index.clear()
+        codePrefixIndex.clear()
+        t9PrefixIndex.clear()
 
         val root = JSONObject(json)
         val entriesArray = root.getJSONArray("entries")
@@ -150,6 +156,14 @@ class DictionaryManager(private val context: Context) {
             charIndex.getOrPut(entry.char) { mutableListOf() }.add(entry)
             if (entry.t9.isNotEmpty()) {
                 t9Index.getOrPut(entry.t9) { mutableListOf() }.add(entry)
+                for (len in 1..entry.t9.length) {
+                    val prefix = entry.t9.substring(0, len)
+                    t9PrefixIndex.getOrPut(prefix) { mutableListOf() }.add(entry)
+                }
+            }
+            for (len in 1..entry.code.length) {
+                val prefix = entry.code.substring(0, len)
+                codePrefixIndex.getOrPut(prefix) { mutableListOf() }.add(entry)
             }
         }
     }
@@ -178,9 +192,9 @@ class DictionaryManager(private val context: Context) {
     }
 
     fun lookupPrefix(prefix: String): List<DictionaryEntry> {
-        return allEntries
-            .filter { it.code.startsWith(prefix) }
-            .sortedByDescending { getEffectiveFrequency(it) }
+        return codePrefixIndex[prefix]
+            ?.sortedByDescending { getEffectiveFrequency(it) }
+            ?: emptyList()
     }
 
     fun lookupByChar(char: String): DictionaryEntry? {
@@ -189,6 +203,12 @@ class DictionaryManager(private val context: Context) {
 
     fun lookupT9(t9Code: String): List<DictionaryEntry> {
         return t9Index[t9Code]?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+    }
+
+    fun lookupT9Prefix(t9Prefix: String): List<DictionaryEntry> {
+        return t9PrefixIndex[t9Prefix]
+            ?.sortedByDescending { getEffectiveFrequency(it) }
+            ?: emptyList()
     }
 
     fun getAssociations(char: String): List<String> {

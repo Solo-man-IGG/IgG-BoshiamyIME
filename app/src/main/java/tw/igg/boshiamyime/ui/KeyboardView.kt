@@ -65,6 +65,12 @@ class KeyboardView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
     }
 
+    private val spaceHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#70757A")
+        textSize = 34f
+        textAlign = Paint.Align.LEFT
+    }
+
     private val keyTabTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#1A73E8")
         textSize = 22f
@@ -82,6 +88,8 @@ class KeyboardView @JvmOverloads constructor(
     private var currentLayout: KeyboardLayout = KeyboardLayout.T9
     var isShifted = false
         private set
+
+    private var scaleMultiplier = 1.0f
 
     private var emojiCategory = 0
 
@@ -131,6 +139,7 @@ class KeyboardView @JvmOverloads constructor(
     private data class Category(val name: String, val rows: List<List<String>>)
 
     private var spaceHint = ""
+    private var modeLabelText = "T9"
     private var spaceHintScrollX = 0f
     private var spaceDragStartX = 0f
     private var spaceDragActive = false
@@ -139,6 +148,13 @@ class KeyboardView @JvmOverloads constructor(
         if (spaceHint != hint) {
             spaceHint = hint
             spaceHintScrollX = 0f
+            invalidate()
+        }
+    }
+
+    fun setModeLabel(label: String) {
+        if (modeLabelText != label) {
+            modeLabelText = label
             invalidate()
         }
     }
@@ -185,6 +201,19 @@ class KeyboardView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setScale(multiplier: Float) {
+        val clamped = multiplier.coerceIn(0.7f, 1.4f)
+        if (Math.abs(scaleMultiplier - clamped) > 0.01f) {
+            scaleMultiplier = clamped
+            keyTextPaint.textSize = 42f * clamped
+            keySubTextPaint.textSize = 34f * clamped
+            spaceHintPaint.textSize = 34f * clamped
+            keyTabTextPaint.textSize = 22f * clamped
+            requestLayout()
+            invalidate()
+        }
+    }
+
     fun setLayout(layout: KeyboardLayout) {
         currentLayout = layout
         keys = createLayout(layout)
@@ -200,7 +229,10 @@ class KeyboardView @JvmOverloads constructor(
                 listOf(KeyData("4", "GHI"), KeyData("5", "JKL"), KeyData("6", "MNO")),
                 listOf(KeyData("7", "PQRS"), KeyData("8", "TUV"), KeyData("9", "WXYZ")),
                 listOf(KeyData(",", ""), KeyData("0"), KeyData(".", "")),
-                listOf(KeyData("space", width = 2), KeyData("⏎"))
+                listOf(
+                    KeyData("mode"), KeyData("sym"),
+                    KeyData("space", width = 2), KeyData("⏎"), KeyData("😊")
+                )
             )
             KeyboardLayout.QWERTY -> listOf(
                 listOf(
@@ -224,8 +256,9 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("⏎", width = 1, isAction = true)
                 ),
                 listOf(
-                    KeyData(",", ""), KeyData("space", width = 7),
-                    KeyData(".", "")
+                    KeyData("mode"), KeyData("sym"),
+                    KeyData(","), KeyData("space", width = 5),
+                    KeyData("."), KeyData("😊")
                 )
             )
             KeyboardLayout.ZHUYIN -> listOf(
@@ -254,8 +287,9 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("ㄥ")
                 ),
                 listOf(
-                    KeyData("ㄦ"),
-                    KeyData("space", width = 4), KeyData("⏎")
+                    KeyData("mode"), KeyData("sym"),
+                    KeyData("ㄦ"), KeyData("space", width = 3),
+                    KeyData("⏎"), KeyData("😊")
                 )
             )
             KeyboardLayout.NUMBER -> listOf(
@@ -328,7 +362,7 @@ class KeyboardView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val keyHeight = (56 * resources.displayMetrics.density).toInt()
+        val keyHeight = (56 * resources.displayMetrics.density * scaleMultiplier).toInt()
         val totalRows = keys.size
         val height = keyHeight * totalRows + (16 * resources.displayMetrics.density).toInt()
         setMeasuredDimension(width, height)
@@ -342,7 +376,7 @@ class KeyboardView @JvmOverloads constructor(
 
         val density = resources.displayMetrics.density
         val padding = (4 * density).toInt()
-        val keyHeight = (56 * density).toInt()
+        val keyHeight = (56 * density * scaleMultiplier).toInt()
 
         keyRects.clear()
 
@@ -367,12 +401,13 @@ class KeyboardView @JvmOverloads constructor(
                 canvas.drawRoundRect(tempRect, 12f, 12f, paint)
                 canvas.drawRoundRect(tempRect, 12f, 12f, keyBorderPaint)
 
-                val displayLabel = if (currentLayout == KeyboardLayout.QWERTY &&
-                    isShifted && key.label.length == 1 &&
-                    key.label[0] in 'a'..'z') {
-                    key.label.uppercase()
-                } else {
-                    key.label
+                val displayLabel = when {
+                    key.label == "mode" -> modeLabelText
+                    key.label == "sym" -> "#+="
+                    currentLayout == KeyboardLayout.QWERTY &&
+                        isShifted && key.label.length == 1 &&
+                        key.label[0] in 'a'..'z' -> key.label.uppercase()
+                    else -> key.label
                 }
 
                 val centerX = tempRect.centerX()
@@ -392,7 +427,7 @@ class KeyboardView @JvmOverloads constructor(
                     val innerLeft = tempRect.left + padding
                     val innerRight = tempRect.right - padding
                     val innerWidth = innerRight - innerLeft
-                    val hintWidth = keySubTextPaint.measureText(spaceHint)
+                    val hintWidth = spaceHintPaint.measureText(spaceHint)
                     val maxScroll = (hintWidth - innerWidth).coerceAtLeast(0f)
                     if (spaceHintScrollX > maxScroll) spaceHintScrollX = maxScroll
                     if (spaceHintScrollX < 0f) spaceHintScrollX = 0f
@@ -402,7 +437,7 @@ class KeyboardView @JvmOverloads constructor(
                         spaceHint,
                         innerLeft - spaceHintScrollX,
                         centerY + 30f,
-                        keySubTextPaint
+                        spaceHintPaint
                     )
                     canvas.restore()
                 } else if (currentLayout == KeyboardLayout.EMOJI && isEmojiTabLabel(key.label)) {
@@ -492,7 +527,7 @@ class KeyboardView @JvmOverloads constructor(
         val rect = keyRects["space"] ?: return 0f
         val padding = (4 * resources.displayMetrics.density).toInt()
         val innerWidth = rect.width() - padding * 2
-        val hintWidth = keySubTextPaint.measureText(spaceHint)
+        val hintWidth = spaceHintPaint.measureText(spaceHint)
         return (hintWidth - innerWidth).coerceAtLeast(0f)
     }
 

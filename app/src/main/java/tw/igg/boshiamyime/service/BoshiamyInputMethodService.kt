@@ -1,13 +1,30 @@
 package tw.igg.boshiamyime.service
 
+import android.annotation.SuppressLint
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.media.AudioManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.util.Log
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
+import androidx.core.content.edit
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import tw.igg.boshiamyime.R
 import tw.igg.boshiamyime.data.DictionaryManager
 import tw.igg.boshiamyime.engine.InputEngineManager
@@ -16,9 +33,11 @@ import tw.igg.boshiamyime.engine.T9Engine
 import tw.igg.boshiamyime.engine.ZhuyinEngine
 import tw.igg.boshiamyime.model.Candidate
 import tw.igg.boshiamyime.model.KeyboardMode
+import tw.igg.boshiamyime.theme.ThemePalette
 import tw.igg.boshiamyime.ui.CandidateBarView
 import tw.igg.boshiamyime.ui.KeyboardView
 
+@Suppress("SpellCheckingInspection")
 class BoshiamyInputMethodService : InputMethodService(),
     KeyboardView.OnKeyPressListener,
     CandidateBarView.OnCandidateClickListener {
@@ -32,14 +51,12 @@ class BoshiamyInputMethodService : InputMethodService(),
     private lateinit var keyboardView: KeyboardView
     private lateinit var candidateBar: CandidateBarView
     private lateinit var container: View
-    private lateinit var topBar: View
     private lateinit var btnCandidateDelete: TextView
 
-    private lateinit var btnMode: TextView
-    private lateinit var btnSymbol: TextView
-    private lateinit var btnEmoji: TextView
-
     private lateinit var prefs: SharedPreferences
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var isDictionaryReady = false
 
     private var isShifted = false
     private var isCapsLock = false
@@ -47,61 +64,89 @@ class BoshiamyInputMethodService : InputMethodService(),
     private var zhuyinInput = ""
     private var lastCommittedChar = ""
     private var previousKeyboardMode: KeyboardMode = KeyboardMode.T9
+    private var lastSavedAssociationsTime = 0L
+    private val associationsSaveInterval = 5000L
 
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences("boshiamy_prefs", MODE_PRIVATE)
         dictionaryManager = DictionaryManager(this)
-        dictionaryManager.loadDictionary("standard")
-        dictionaryManager.loadUsageFrequency(prefs)
-        dictionaryManager.loadLearnedAssociations(prefs)
 
         lookupEngine = LookupEngine(dictionaryManager)
         t9Engine = T9Engine(dictionaryManager)
         zhuyinEngine = ZhuyinEngine(this)
-        zhuyinEngine.loadDictionary()
         engineManager = InputEngineManager(lookupEngine, t9Engine)
         prefs.registerOnSharedPreferenceChangeListener(themeChangeListener)
+
+        val initialMode = when (prefs.getString("default_input_mode", "T9")) {
+            "QWERTY" -> KeyboardMode.QWERTY
+            "ZHUYIN" -> KeyboardMode.ZHUYIN
+            else -> KeyboardMode.T9
+        }
+        engineManager.switchKeyboard(initialMode)
+
+        serviceScope.launch {
+            withContext(Dispatchers.IO) {
+                Log.i("BoshiamyIME", "Dictionary loading started")
+                dictionaryManager.loadDictionary("standard")
+                dictionaryManager.loadUsageFrequency(prefs)
+                dictionaryManager.loadLearnedAssociations(prefs)
+                zhuyinEngine.loadDictionary()
+                Log.i("BoshiamyIME", "Dictionary loading finished")
+            }
+            isDictionaryReady = true
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (::keyboardView.isInitialized &&
+            prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM) == ThemePalette.MODE_SYSTEM) {
+            loadThemeColors()
+        }
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        prefs.unregisterOnSharedPreferenceChangeListener(themeChangeListener)
+        super.onDestroy()
     }
 
     private val themeChangeListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key != null && key.startsWith("theme_") && ::keyboardView.isInitialized) {
-                loadThemeColors()
+            if (!::keyboardView.isInitialized) return@OnSharedPreferenceChangeListener
+            when {
+                key != null && key.startsWith("theme_") -> loadThemeColors()
+                key == "keyboard_scale" -> keyboardView.setScale(prefs.getFloat("keyboard_scale", 1.0f))
             }
         }
 
+    @SuppressLint("InflateParams", "ClickableViewAccessibility")
     override fun onCreateInputView(): View {
-        val inflater = android.view.LayoutInflater.from(this)
+        val inflater = LayoutInflater.from(this)
         container = inflater.inflate(R.layout.keyboard_container, null)
 
         keyboardView = container.findViewById(R.id.boshiamy_keyboard_view)
         candidateBar = container.findViewById(R.id.candidate_bar)
         btnCandidateDelete = container.findViewById(R.id.btn_candidate_delete)
-        btnMode = container.findViewById(R.id.btn_mode)
-        btnSymbol = container.findViewById(R.id.btn_symbol)
-        btnEmoji = container.findViewById(R.id.btn_emoji)
-        topBar = container.findViewById(R.id.top_bar)
 
         keyboardView.setOnKeyPressListener(this)
         candidateBar.setOnCandidateClickListener(this)
-        keyboardView.setLayout(KeyboardView.KeyboardLayout.T9)
+        val initialLayout = when (engineManager.keyboardMode) {
+            KeyboardMode.QWERTY -> KeyboardView.KeyboardLayout.QWERTY
+            KeyboardMode.ZHUYIN -> KeyboardView.KeyboardLayout.ZHUYIN
+            else -> KeyboardView.KeyboardLayout.T9
+        }
+        keyboardView.setLayout(initialLayout)
+        keyboardView.setModeLabel(engineManager.keyboardMode.displayName)
+        keyboardView.setScale(prefs.getFloat("keyboard_scale", 1.0f))
         loadThemeColors()
 
-        btnMode.setOnClickListener { toggleKeyboardMode() }
         btnCandidateDelete.setOnTouchListener(deleteTouchListener)
-        btnSymbol.setOnClickListener {
-            openPanel(KeyboardMode.SYMBOL, KeyboardView.KeyboardLayout.SYMBOL)
-        }
-        btnEmoji.setOnClickListener {
-            openPanel(KeyboardMode.EMOJI, KeyboardView.KeyboardLayout.EMOJI)
-        }
 
-        updateTopBarButtons()
-
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
             val bottom = insets.getInsets(
-                androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                WindowInsetsCompat.Type.systemBars()
             ).bottom
             v.setPadding(0, 0, 0, bottom)
             insets
@@ -111,15 +156,12 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     private fun loadThemeColors() {
-        val bg = prefs.getInt("theme_bg", 0xFFD6D6D6.toInt())
-        val text = prefs.getInt("theme_text", 0xFF000000.toInt())
-        val keyBg = prefs.getInt("theme_key_bg", 0xFFFFFFFF.toInt())
-        val keyPressed = prefs.getInt("theme_key_pressed", 0xFFCCCCCC.toInt())
-        val border = prefs.getInt("theme_border", 0xFFB0B0B0.toInt())
-        keyboardView.setThemeColors(bg, text, keyBg, keyPressed, border)
-        container.setBackgroundColor(bg)
-        topBar.setBackgroundColor(bg)
-        candidateBar.setPanelBackgroundColor(bg)
+        val palette = ThemePalette.resolve(prefs, this)
+        keyboardView.setThemeColors(
+            palette.bg, palette.text, palette.keyBg, palette.keyPressed, palette.border
+        )
+        container.setBackgroundColor(palette.bg)
+        candidateBar.setThemeColors(palette.text, palette.bg)
     }
 
     override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {
@@ -137,6 +179,7 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     override fun onKeyPress(key: String) {
         val inputConnection = currentInputConnection ?: return
+        performHaptic()
 
         when (key) {
             "⌫" -> {
@@ -180,23 +223,21 @@ class BoshiamyInputMethodService : InputMethodService(),
                     }
                 }
             }
-            "space" -> {
-                if (engineManager.keyboardMode == KeyboardMode.ZHUYIN) {
+            "space" -> when {
+                engineManager.keyboardMode == KeyboardMode.ZHUYIN ->
                     if (zhuyinInput.isNotEmpty()) {
                         commitFirstCandidateZhuyin()
                     } else {
-                        inputConnection.commitText(" ", 1)
+                        commitDirectText(" ")
                     }
-                } else if (engineManager.keyboardMode == KeyboardMode.T9) {
+                engineManager.keyboardMode == KeyboardMode.T9 -> {
                     if (!engineManager.isEmpty) {
                         commitRawInput()
                     }
-                    inputConnection.commitText(" ", 1)
-                } else if (!engineManager.isEmpty) {
-                    commitFirstCandidate()
-                } else {
-                    inputConnection.commitText(" ", 1)
+                    commitDirectText(" ")
                 }
+                !engineManager.isEmpty -> commitFirstCandidate()
+                else -> commitDirectText(" ")
             }
             "⇧" -> {
                 val now = System.currentTimeMillis()
@@ -223,10 +264,24 @@ class BoshiamyInputMethodService : InputMethodService(),
                 engineManager.switchKeyboard(KeyboardMode.QWERTY)
                 keyboardView.setLayout(KeyboardView.KeyboardLayout.QWERTY)
             }
+            "mode" -> {
+                toggleKeyboardMode()
+            }
+            "sym" -> {
+                openPanel(KeyboardMode.SYMBOL, KeyboardView.KeyboardLayout.SYMBOL)
+            }
+            "😊" -> {
+                if (engineManager.keyboardMode == KeyboardMode.EMOJI) {
+                    inputConnection.commitText(key, 1)
+                    returnToPreviousKeyboard()
+                } else {
+                    openPanel(KeyboardMode.EMOJI, KeyboardView.KeyboardLayout.EMOJI)
+                }
+            }
             else -> {
                 if (engineManager.keyboardMode == KeyboardMode.SYMBOL ||
                     engineManager.keyboardMode == KeyboardMode.EMOJI) {
-                    inputConnection.commitText(key, 1)
+                    commitDirectText(key)
                     returnToPreviousKeyboard()
                     return
                 }
@@ -234,6 +289,11 @@ class BoshiamyInputMethodService : InputMethodService(),
                     zhuyinInput += zhuyinEngine.symbolToCode(key)
                     updateZhuyinCandidates()
                 } else {
+                    if (engineManager.keyboardMode == KeyboardMode.QWERTY &&
+                        key.length == 1 && key[0].isDigit()) {
+                        commitDirectText(key)
+                        return
+                    }
                     val typed = if (isShifted || isCapsLock) key.uppercase() else key
                     engineManager.appendInput(typed)
                     if (isShifted && !isCapsLock) {
@@ -247,15 +307,16 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     override fun onLongPress(key: String) {
-        val inputConnection = currentInputConnection ?: return
+        if (currentInputConnection == null) return
+        performHaptic()
 
         when {
             engineManager.keyboardMode == KeyboardMode.T9 && key.length == 1 && key[0].isDigit() -> {
-                inputConnection.commitText(key, 1)
+                commitDirectText(key)
             }
             engineManager.keyboardMode == KeyboardMode.QWERTY && key.length == 1 && key[0].isLetter() -> {
                 val output = if (isShifted || isCapsLock) key.uppercase() else key
-                inputConnection.commitText(output, 1)
+                commitDirectText(output)
                 if (isShifted && !isCapsLock) {
                     isShifted = false
                     keyboardView.setShifted(false)
@@ -265,6 +326,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     override fun onCandidateClick(candidate: Candidate, position: Int) {
+        performHaptic()
         commitCandidate(candidate)
     }
 
@@ -276,7 +338,8 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
     }
 
-    private val deleteTouchListener = View.OnTouchListener { _, event ->
+    @SuppressLint("ClickableViewAccessibility")
+    private val deleteTouchListener = View.OnTouchListener { view, event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 handleDelete()
@@ -285,6 +348,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 deleteRepeatHandler.removeCallbacks(deleteRepeatRunnable)
+                view.performClick()
                 true
             }
             else -> true
@@ -442,12 +506,56 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     private fun trackUsage(char: String) {
         val current = prefs.getInt("freq_$char", 0)
-        prefs.edit().putInt("freq_$char", current + 1).apply()
+        prefs.edit { putInt("freq_$char", current + 1) }
         dictionaryManager.recordUsage(char)
     }
 
+    @SuppressLint("MissingPermission")
+    private fun performHaptic() {
+        if (prefs.getBoolean("vibrate", true)) {
+            val vibrator = getSystemService(Vibrator::class.java)
+            if (vibrator != null && vibrator.hasVibrator()) {
+                when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> vibrator.vibrate(
+                        VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
+                    )
+                    else -> {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(18)
+                    }
+                }
+            }
+        }
+        if (prefs.getBoolean("sound", false)) {
+            val audioManager = getSystemService(AudioManager::class.java)
+            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD)
+        }
+    }
+
+    private fun commitDirectText(text: String) {
+        val inputConnection = currentInputConnection ?: return
+        inputConnection.commitText(toFullWidth(text), 1)
+    }
+
+    private fun toFullWidth(text: String): String {
+        if (!prefs.getBoolean("full_width", false)) return text
+        return buildString {
+            for (c in text) {
+                when (c) {
+                    ' ' -> append('\u3000')
+                    in '!'..'~' -> append((c.code + 0xFEE0).toChar())
+                    else -> append(c)
+                }
+            }
+        }
+    }
+
     private fun saveLearnedAssociations() {
-        dictionaryManager.saveLearnedAssociations(prefs)
+        val now = System.currentTimeMillis()
+        if (now - lastSavedAssociationsTime >= associationsSaveInterval) {
+            lastSavedAssociationsTime = now
+            dictionaryManager.saveLearnedAssociations(prefs)
+        }
     }
 
     override fun onFinishInput() {
@@ -455,9 +563,16 @@ class BoshiamyInputMethodService : InputMethodService(),
         currentInputConnection?.finishComposingText()
         engineManager.clearInput()
         zhuyinInput = ""
+        if (lastCommittedChar.isNotEmpty()) {
+            dictionaryManager.saveLearnedAssociations(prefs)
+        }
         lastCommittedChar = ""
-        candidateBar.setCandidates(emptyList())
-        keyboardView.setSpaceHint("")
+        if (::candidateBar.isInitialized) {
+            candidateBar.setCandidates(emptyList())
+        }
+        if (::keyboardView.isInitialized) {
+            keyboardView.setSpaceHint("")
+        }
         isShifted = false
         isCapsLock = false
         lastShiftTime = 0L
@@ -482,9 +597,9 @@ class BoshiamyInputMethodService : InputMethodService(),
             KeyboardMode.EMOJI -> KeyboardView.KeyboardLayout.EMOJI
         }
         keyboardView.setLayout(layout)
+        keyboardView.setModeLabel(nextMode.displayName)
         isShifted = false
         keyboardView.setShifted(false)
-        updateTopBarButtons()
     }
 
     private fun openPanel(mode: KeyboardMode, layout: KeyboardView.KeyboardLayout) {
@@ -506,9 +621,5 @@ class BoshiamyInputMethodService : InputMethodService(),
             KeyboardMode.EMOJI -> KeyboardView.KeyboardLayout.EMOJI
         }
         keyboardView.setLayout(layout)
-    }
-
-    private fun updateTopBarButtons() {
-        btnMode.text = engineManager.keyboardMode.displayName
     }
 }

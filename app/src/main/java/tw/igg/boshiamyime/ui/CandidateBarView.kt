@@ -56,8 +56,10 @@ class CandidateBarView @JvmOverloads constructor(
         textAlign = Paint.Align.CENTER
     }
 
-    private val selectedBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.primary_container)
+    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ContextCompat.getColor(context, R.color.candidate_selected)
+        style = Paint.Style.STROKE
+        strokeWidth = (2 * resources.displayMetrics.density).toFloat()
     }
 
     private val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -80,6 +82,21 @@ class CandidateBarView @JvmOverloads constructor(
     fun setPanelBackgroundColor(color: Int) {
         backgroundPaint.color = color
         invalidate()
+    }
+
+    fun setThemeColors(textColor: Int, bgColor: Int) {
+        textPaint.color = textColor
+        selectedPaint.color = textColor
+        selectedBorderPaint.color = textColor
+        bopomofoPaint.color = adjustAlpha(textColor, 0.7f)
+        dividerPaint.color = adjustAlpha(textColor, 0.3f)
+        backgroundPaint.color = bgColor
+        invalidate()
+    }
+
+    private fun adjustAlpha(color: Int, factor: Float): Int {
+        val alpha = (Color.alpha(color) * factor).toInt()
+        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
     }
 
     fun setCandidates(newCandidates: List<Candidate>) {
@@ -196,10 +213,12 @@ class CandidateBarView @JvmOverloads constructor(
             }
 
             if (i == selectedIndex && !isBopomofoMode) {
+                val stroke = selectedBorderPaint.strokeWidth
                 val bgRect = android.graphics.RectF(
-                    xPos, 0f, xPos + itemWidth, height.toFloat()
+                    xPos + stroke / 2, stroke / 2,
+                    xPos + itemWidth - stroke / 2, height.toFloat() - stroke / 2
                 )
-                canvas.drawRoundRect(bgRect, 8f, 8f, selectedBgPaint)
+                canvas.drawRoundRect(bgRect, 8f, 8f, selectedBorderPaint)
             }
 
             val paint = when {

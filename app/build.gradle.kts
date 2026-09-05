@@ -22,6 +22,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -32,6 +33,10 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    kotlin {
+        jvmToolchain(17)
     }
 }
 

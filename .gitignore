@@ -28,3 +28,13 @@ app/build/
 *.jks
 *.keystore
 keystore.properties
+
+# Internal documents (never publish)
+docs/VAULT.md
+docs/PROGRESS.md
+
+# Local backup
+.gradle-bk/
+
+# Release binaries: attach to GitHub Releases instead of committing
+dist/

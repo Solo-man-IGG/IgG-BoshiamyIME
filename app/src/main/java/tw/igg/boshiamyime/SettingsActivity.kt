@@ -1,35 +1,91 @@
 package tw.igg.boshiamyime
 
+import android.app.AlertDialog
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.LinearLayout
+import android.widget.EditText
 import android.widget.ProgressBar
-import android.widget.RadioButton
-import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import tw.igg.boshiamyime.data.DictionaryDownloader
+import tw.igg.boshiamyime.theme.ThemePalette
+import tw.igg.boshiamyime.ui.KeyboardPreviewView
+import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
 
+    private lateinit var prefs: android.content.SharedPreferences
     private lateinit var downloader: DictionaryDownloader
+
+    private lateinit var preview: KeyboardPreviewView
+    private lateinit var customThemeContainer: View
+
+    private lateinit var btnThemeBg: Button
+    private lateinit var btnThemeText: Button
+    private lateinit var btnThemeKeyBg: Button
+    private lateinit var btnThemeBorder: Button
+    private lateinit var etThemeBg: EditText
+    private lateinit var etThemeText: EditText
+    private lateinit var etThemeKeyBg: EditText
+    private lateinit var etThemeBorder: EditText
+
     private lateinit var tvDictVersion: TextView
     private lateinit var tvDictCount: TextView
     private lateinit var btnUpdate: Button
     private lateinit var progressUpdate: ProgressBar
     private lateinit var tvUpdateStatus: TextView
 
+    private val allowedPrefKeys = listOf(
+        "default_input_mode", "keyboard_scale",
+        "vibrate", "sound", "full_width",
+        "theme_mode",
+        "theme_bg", "theme_text", "theme_key_bg", "theme_key_pressed", "theme_border"
+    )
+
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null) exportSettings(uri)
+        }
+
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) importSettings(uri)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
+        prefs = getSharedPreferences("boshiamy_prefs", MODE_PRIVATE)
         downloader = DictionaryDownloader(this)
+
+        preview = findViewById(R.id.preview_keyboard)
+        customThemeContainer = findViewById(R.id.custom_theme_container)
+
+        btnThemeBg = findViewById(R.id.btn_theme_bg)
+        btnThemeText = findViewById(R.id.btn_theme_text)
+        btnThemeKeyBg = findViewById(R.id.btn_theme_keybg)
+        btnThemeBorder = findViewById(R.id.btn_theme_border)
+        etThemeBg = findViewById(R.id.et_theme_bg)
+        etThemeText = findViewById(R.id.et_theme_text)
+        etThemeKeyBg = findViewById(R.id.et_theme_keybg)
+        etThemeBorder = findViewById(R.id.et_theme_border)
 
         tvDictVersion = findViewById(R.id.tv_dict_version)
         tvDictCount = findViewById(R.id.tv_dict_count)
@@ -37,115 +93,146 @@ class SettingsActivity : AppCompatActivity() {
         progressUpdate = findViewById(R.id.progress_update)
         tvUpdateStatus = findViewById(R.id.tv_update_status)
 
-        updateDictInfo()
+        setupInputModeSpinner()
+        setupKeyboardScaleSpinner()
+        setupSwitch(R.id.switch_vibrate, "vibrate", true)
+        setupSwitch(R.id.switch_sound, "sound", false)
+        setupSwitch(R.id.switch_full_width, "full_width", false)
 
-        btnUpdate.setOnClickListener { startDownload() }
+        setupThemeModeSpinner()
+        setupThemeControls()
+        setupDictManagement()
+        setupDataButtons()
 
-        val rgInputMode = findViewById<RadioGroup>(R.id.rg_input_mode)
-        val rgBoshiamyMode = findViewById<RadioGroup>(R.id.rg_boshiamy_mode)
-
-        rgInputMode.setOnCheckedChangeListener { _, checkedId ->
-            val mode = when (checkedId) {
-                R.id.rb_t9 -> "T9"
-                R.id.rb_qwerty -> "QWERTY"
-                R.id.rb_zhuyin -> "ZHUYIN"
-                else -> "T9"
-            }
-            getSharedPreferences("boshiamy_settings", MODE_PRIVATE)
-                .edit().putString("input_mode", mode).apply()
-            Toast.makeText(this, "已切換為 $mode 模式", Toast.LENGTH_SHORT).show()
-        }
-
-        rgBoshiamyMode.setOnCheckedChangeListener { _, checkedId ->
-            val mode = when (checkedId) {
-                R.id.rb_standard -> "standard"
-                R.id.rb_simplified -> "simplified"
-                R.id.rb_eten -> "eten"
-                else -> "standard"
-            }
-            getSharedPreferences("boshiamy_settings", MODE_PRIVATE)
-                .edit().putString("boshiamy_mode", mode).apply()
-            Toast.makeText(this, "已切換為 $mode 模式", Toast.LENGTH_SHORT).show()
-        }
-
-        loadSavedSettings(rgInputMode, rgBoshiamyMode)
-        setupThemeButtons()
+        updateThemeUi()
+        refreshPreview()
     }
 
-    private fun setupThemeButtons() {
-        val prefs = getSharedPreferences("boshiamy_prefs", MODE_PRIVATE)
-        val btnBg = findViewById<Button>(R.id.btn_theme_bg)
-        val btnText = findViewById<Button>(R.id.btn_theme_text)
-        val btnKeyBg = findViewById<Button>(R.id.btn_theme_keybg)
-        val btnBorder = findViewById<Button>(R.id.btn_theme_border)
-        val btnReset = findViewById<Button>(R.id.btn_theme_reset)
-
-        fun applyPreview(btn: Button, color: Int) {
-            btn.background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(color)
-                cornerRadius = 8f
+    private fun setupSpinner(
+        spinnerId: Int,
+        options: Array<String>,
+        values: Array<String>,
+        saved: String,
+        onSelected: (String) -> Unit
+    ) {
+        val spinner = findViewById<Spinner>(spinnerId)
+        spinner.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, options
+        )
+        val index = values.indexOfFirst { it == saved }.coerceAtLeast(0)
+        spinner.setSelection(index)
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?, view: View?, position: Int, id: Long
+            ) {
+                if (position in values.indices) onSelected(values[position])
             }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+    }
 
-        fun updatePreviews() {
-            applyPreview(btnBg, prefs.getInt("theme_bg", 0xFFD6D6D6.toInt()))
-            applyPreview(btnText, prefs.getInt("theme_text", 0xFF000000.toInt()))
-            applyPreview(btnKeyBg, prefs.getInt("theme_key_bg", 0xFFFFFFFF.toInt()))
-            applyPreview(btnBorder, prefs.getInt("theme_border", 0xFFB0B0B0.toInt()))
+    private fun setupInputModeSpinner() {
+        setupSpinner(
+            R.id.spinner_input_mode,
+            resources.getStringArray(R.array.input_mode_options),
+            resources.getStringArray(R.array.input_mode_values),
+            prefs.getString("default_input_mode", "T9") ?: "T9"
+        ) { value ->
+            prefs.edit().putString("default_input_mode", value).apply()
         }
+    }
 
-        updatePreviews()
+    private fun setupKeyboardScaleSpinner() {
+        setupSpinner(
+            R.id.spinner_keyboard_scale,
+            resources.getStringArray(R.array.keyboard_scale_options),
+            resources.getStringArray(R.array.keyboard_scale_values),
+            prefs.getFloat("keyboard_scale", 1.0f).toString()
+        ) { value ->
+            prefs.edit().putFloat("keyboard_scale", value.toFloatOrNull() ?: 1.0f).apply()
+        }
+    }
 
-        fun pickAndSave(title: String, key: String, colors: IntArray, names: Array<String>, default: Int) {
-            showColorPicker(title, colors, names) { color ->
+    private fun setupThemeModeSpinner() {
+        setupSpinner(
+            R.id.spinner_theme_mode,
+            resources.getStringArray(R.array.theme_mode_options),
+            resources.getStringArray(R.array.theme_mode_values),
+            prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM) ?: ThemePalette.MODE_SYSTEM
+        ) { value ->
+            prefs.edit().putString("theme_mode", value).apply()
+            updateThemeUi()
+            refreshPreview()
+        }
+    }
+
+    private fun setupSwitch(viewId: Int, key: String, default: Boolean) {
+        val sw = findViewById<Switch>(viewId)
+        sw.isChecked = prefs.getBoolean(key, default)
+        sw.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(key, isChecked).apply()
+        }
+    }
+
+    private fun applyPreview(btn: Button, color: Int) {
+        btn.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(color)
+            cornerRadius = 8f
+        }
+    }
+
+    private fun toHex(color: Int): String =
+        String.format(Locale.US, "#%06X", color and 0xFFFFFF)
+
+    private fun parseHex(text: String): Int? {
+        val trimmed = text.trim().removePrefix("#")
+        return try {
+            if (trimmed.length == 6) Color.parseColor("#$trimmed") else null
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+
+    private fun setupThemeControls() {
+        fun bindSwitchButton(
+            key: String,
+            btn: Button,
+            et: EditText,
+            defaultColor: Int
+        ) {
+            fun applyColor(color: Int) {
                 prefs.edit().putInt(key, color).apply()
-                updatePreviews()
-                Toast.makeText(this, "已套用（立即生效）", Toast.LENGTH_SHORT).show()
+                applyPreview(btn, color)
+                et.setText(toHex(color))
+                refreshPreview()
+            }
+            btn.setOnClickListener {
+                showColorPicker(key, defaultColor) { color -> applyColor(color) }
+            }
+            et.setOnEditorActionListener { _, actionId, event ->
+                val done = actionId == EditorInfo.IME_ACTION_DONE ||
+                    (event?.action == KeyEvent.ACTION_DOWN &&
+                        event.keyCode == KeyEvent.KEYCODE_ENTER)
+                if (done) {
+                    applyHexFromField(key, et)
+                    true
+                } else {
+                    false
+                }
+            }
+            et.setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) applyHexFromField(key, et)
             }
         }
 
-        btnBg.setOnClickListener {
-            pickAndSave(
-                "選擇鍵盤背景色", "theme_bg",
-                intArrayOf(0xFFD6D6D6.toInt(), 0xFF2B2B2B.toInt(), 0xFF1A1A2E.toInt(),
-                    0xFF0F3460.toInt(), 0xFF16213E.toInt(), 0xFF533483.toInt()),
-                arrayOf("預設灰", "深黑", "深藍", "海洋藍", "暗夜", "紫色"),
-                0xFFD6D6D6.toInt()
-            )
-        }
+        bindSwitchButton("theme_bg", btnThemeBg, etThemeBg, ThemePalette.light().bg)
+        bindSwitchButton("theme_text", btnThemeText, etThemeText, ThemePalette.light().text)
+        bindSwitchButton("theme_key_bg", btnThemeKeyBg, etThemeKeyBg, ThemePalette.light().keyBg)
+        bindSwitchButton("theme_border", btnThemeBorder, etThemeBorder, ThemePalette.light().border)
 
-        btnText.setOnClickListener {
-            pickAndSave(
-                "選擇按鍵文字色", "theme_text",
-                intArrayOf(0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFF1A73E8.toInt(),
-                    0xFFD32F2F.toInt(), 0xFF388E3C.toInt(), 0xFFF57C00.toInt()),
-                arrayOf("黑色", "白色", "藍色", "紅色", "綠色", "橘色"),
-                0xFF000000.toInt()
-            )
-        }
-
-        btnKeyBg.setOnClickListener {
-            pickAndSave(
-                "選擇按鍵背景色", "theme_key_bg",
-                intArrayOf(0xFFFFFFFF.toInt(), 0xFFE8EAED.toInt(), 0xFF3C4043.toInt(),
-                    0xFFE3F2FD.toInt(), 0xFFFDECEA.toInt(), 0xFFF1F8E9.toInt()),
-                arrayOf("白色", "淺灰", "深灰", "淺藍", "淺紅", "淺綠"),
-                0xFFFFFFFF.toInt()
-            )
-        }
-
-        btnBorder.setOnClickListener {
-            pickAndSave(
-                "選擇按鍵框線色", "theme_border",
-                intArrayOf(0xFFB0B0B0.toInt(), 0xFF5F6368.toInt(), 0xFF1A73E8.toInt(),
-                    0xFFD32F2F.toInt(), 0xFF000000.toInt(), 0xFFFFFFFF.toInt()),
-                arrayOf("淺灰", "深灰", "藍色", "紅色", "黑色", "白色"),
-                0xFFB0B0B0.toInt()
-            )
-        }
-
-        btnReset.setOnClickListener {
+        findViewById<Button>(R.id.btn_theme_reset).setOnClickListener {
             prefs.edit()
                 .remove("theme_bg")
                 .remove("theme_text")
@@ -153,33 +240,88 @@ class SettingsActivity : AppCompatActivity() {
                 .remove("theme_key_pressed")
                 .remove("theme_border")
                 .apply()
-            updatePreviews()
-            Toast.makeText(this, "已恢復預設色彩（立即生效）", Toast.LENGTH_SHORT).show()
+            updateThemeUi()
+            refreshPreview()
+            Toast.makeText(this, "已恢復預設色彩", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun showColorPicker(title: String, colors: IntArray, names: Array<String>, onSelected: (Int) -> Unit) {
-        val builder = android.app.AlertDialog.Builder(this)
-        builder.setTitle(title)
-        val items = names.map { name -> name }.toTypedArray()
-        builder.setItems(items) { _, which ->
-            onSelected(colors[which])
+    private fun applyHexFromField(key: String, et: EditText) {
+        val color = parseHex(et.text.toString())
+        if (color != null) {
+            prefs.edit().putInt(key, color).apply()
+            val btn = when (key) {
+                "theme_bg" -> btnThemeBg
+                "theme_text" -> btnThemeText
+                "theme_key_bg" -> btnThemeKeyBg
+                else -> btnThemeBorder
+            }
+            applyPreview(btn, color)
+            et.setText(toHex(color))
+            refreshPreview()
+        } else {
+            Toast.makeText(this, "色碼格式錯誤，請輸入 #RRGGBB", Toast.LENGTH_SHORT).show()
+            updateThemeUi()
+        }
+    }
+
+    private fun showColorPicker(key: String, defaultColor: Int, onSelected: (Int) -> Unit) {
+        val preset = when (key) {
+            "theme_bg" -> intArrayOf(
+                0xFFF1F3F4.toInt(), 0xFF2B2B2B.toInt(), 0xFF1A1A2E.toInt(),
+                0xFF0F3460.toInt(), 0xFF16213E.toInt(), 0xFF533483.toInt()
+            )
+            "theme_text" -> intArrayOf(
+                0xFF202124.toInt(), 0xFFFFFFFF.toInt(), 0xFF1A73E8.toInt(),
+                0xFFD32F2F.toInt(), 0xFF388E3C.toInt(), 0xFFF57C00.toInt()
+            )
+            "theme_key_bg" -> intArrayOf(
+                0xFFFFFFFF.toInt(), 0xFFE8EAED.toInt(), 0xFF3C4043.toInt(),
+                0xFFE3F2FD.toInt(), 0xFFFDECEA.toInt(), 0xFFF1F8E9.toInt()
+            )
+            else -> intArrayOf(
+                0xFFB0B0B0.toInt(), 0xFF5F6368.toInt(), 0xFF1A73E8.toInt(),
+                0xFFD32F2F.toInt(), 0xFF202124.toInt(), 0xFFFFFFFF.toInt()
+            )
+        }
+        val names = preset.map(::toHex).toTypedArray()
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("選擇顏色")
+        builder.setItems(names) { _, which ->
+            if (which in preset.indices) onSelected(preset[which])
         }
         builder.show()
     }
 
-    private fun loadSavedSettings(rgInputMode: RadioGroup, rgBoshiamyMode: RadioGroup) {
-        val prefs = getSharedPreferences("boshiamy_settings", MODE_PRIVATE)
-        when (prefs.getString("input_mode", "T9")) {
-            "T9" -> rgInputMode.check(R.id.rb_t9)
-            "QWERTY" -> rgInputMode.check(R.id.rb_qwerty)
-            "ZHUYIN" -> rgInputMode.check(R.id.rb_zhuyin)
-        }
-        when (prefs.getString("boshiamy_mode", "standard")) {
-            "standard" -> rgBoshiamyMode.check(R.id.rb_standard)
-            "simplified" -> rgBoshiamyMode.check(R.id.rb_simplified)
-            "eten" -> rgBoshiamyMode.check(R.id.rb_eten)
-        }
+    private fun updateThemeUi() {
+        val themeMode = prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM)
+        customThemeContainer.visibility =
+            if (themeMode == ThemePalette.MODE_CUSTOM) View.VISIBLE else View.GONE
+
+        val custom = ThemePalette.resolve(prefs, this)
+        val isCustom = themeMode == ThemePalette.MODE_CUSTOM
+        val bg = if (isCustom) prefs.getInt("theme_bg", ThemePalette.light().bg) else custom.bg
+        val text = if (isCustom) prefs.getInt("theme_text", ThemePalette.light().text) else custom.text
+        val keyBg = if (isCustom) prefs.getInt("theme_key_bg", ThemePalette.light().keyBg) else custom.keyBg
+        val border = if (isCustom) prefs.getInt("theme_border", ThemePalette.light().border) else custom.border
+
+        applyPreview(btnThemeBg, bg)
+        applyPreview(btnThemeText, text)
+        applyPreview(btnThemeKeyBg, keyBg)
+        applyPreview(btnThemeBorder, border)
+        etThemeBg.setText(toHex(bg))
+        etThemeText.setText(toHex(text))
+        etThemeKeyBg.setText(toHex(keyBg))
+        etThemeBorder.setText(toHex(border))
+    }
+
+    private fun refreshPreview() {
+        preview.setPalette(ThemePalette.resolve(prefs, this))
+    }
+
+    private fun setupDictManagement() {
+        updateDictInfo()
+        btnUpdate.setOnClickListener { startDownload() }
     }
 
     private fun updateDictInfo() {
@@ -237,5 +379,96 @@ class SettingsActivity : AppCompatActivity() {
                 }
             })
         }
+    }
+
+    private fun setupDataButtons() {
+        findViewById<Button>(R.id.btn_clear_data).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("清除學習資料")
+                .setMessage("將清除所有自學的聯想詞與使用頻率紀錄，確定要繼續嗎？")
+                .setPositiveButton("清除") { _, _ ->
+                    clearLearnedData()
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
+
+        findViewById<Button>(R.id.btn_export_settings).setOnClickListener {
+            exportLauncher.launch("boshiamy-settings.json")
+        }
+
+        findViewById<Button>(R.id.btn_import_settings).setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        }
+    }
+
+    private fun clearLearnedData() {
+        val editor = prefs.edit()
+        prefs.all.keys.forEach { key ->
+            if (key.startsWith("freq_") || key.startsWith("assoc_")) {
+                editor.remove(key)
+            }
+        }
+        editor.apply()
+        Toast.makeText(this, "學習資料已清除", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun exportSettings(uri: Uri) {
+        try {
+            val filtered = prefs.all.filterKeys { it in allowedPrefKeys }
+            val json = JSONObject(filtered as Map<String, Any?>)
+            contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(json.toString().toByteArray(Charsets.UTF_8))
+            }
+            Toast.makeText(this, "設定已匯出", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "匯出失敗：${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun importSettings(uri: Uri) {
+        try {
+            val text = contentResolver.openInputStream(uri)
+                ?.bufferedReader()
+                ?.use { it.readText() }
+                ?: return
+            val json = JSONObject(text)
+            val editor = prefs.edit()
+            var count = 0
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (key !in allowedPrefKeys) continue
+                val value = json.get(key)
+                when (value) {
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Double -> editor.putFloat(key, value.toFloat())
+                    is Long -> editor.putInt(key, value.toInt())
+                    is String -> editor.putString(key, value)
+                    else -> {}
+                }
+                count++
+            }
+            editor.apply()
+            reloadAllUi()
+            Toast.makeText(this, "已匯入 $count 項設定", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "匯入失敗：${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun reloadAllUi() {
+        setupInputModeSpinner()
+        setupKeyboardScaleSpinner()
+        setupThemeModeSpinner()
+        findViewById<Switch>(R.id.switch_vibrate).isChecked =
+            prefs.getBoolean("vibrate", true)
+        findViewById<Switch>(R.id.switch_sound).isChecked =
+            prefs.getBoolean("sound", false)
+        findViewById<Switch>(R.id.switch_full_width).isChecked =
+            prefs.getBoolean("full_width", false)
+        updateThemeUi()
+        refreshPreview()
     }
 }

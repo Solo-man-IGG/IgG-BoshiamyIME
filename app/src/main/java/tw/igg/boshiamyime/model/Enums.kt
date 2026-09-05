@@ -2,8 +2,8 @@ package tw.igg.boshiamyime.model
 
 enum class KeyboardMode(val displayName: String) {
     T9("T9"),
-    QWERTY("QWERTY"),
-    ZHUYIN("注音"),
+    QWERTY("蝦"),
+    ZHUYIN("注"),
     SYMBOL("符號"),
     EMOJI("Emoji")
 }

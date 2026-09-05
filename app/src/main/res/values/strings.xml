@@ -13,4 +13,36 @@
     <string name="full_width">全形</string>
     <string name="half_width">半形</string>
     <string name="candidate_space_hint">選字</string>
+
+    <!-- 下拉選單陣列 -->
+    <string-array name="input_mode_options">
+        <item>T9 大按鍵模式（建議）</item>
+        <item>QWERTY 鍵盤模式</item>
+        <item>注音輸入（備用）</item>
+    </string-array>
+    <string-array name="input_mode_values">
+        <item>T9</item>
+        <item>QWERTY</item>
+        <item>ZHUYIN</item>
+    </string-array>
+
+    <string-array name="keyboard_scale_options">
+        <item>小</item>
+        <item>標準</item>
+        <item>大</item>
+    </string-array>
+    <string-array name="keyboard_scale_values">
+        <item>0.85</item>
+        <item>1.0</item>
+        <item>1.15</item>
+    </string-array>
+
+    <string-array name="theme_mode_options">
+        <item>跟隨系統深色模式</item>
+        <item>自訂色彩</item>
+    </string-array>
+    <string-array name="theme_mode_values">
+        <item>system</item>
+        <item>custom</item>
+    </string-array>
 </resources>
