@@ -4,7 +4,8 @@ import android.annotation.SuppressLint
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
-import android.media.AudioManager
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -66,6 +67,8 @@ class BoshiamyInputMethodService : InputMethodService(),
     private var previousKeyboardMode: KeyboardMode = KeyboardMode.T9
     private var lastSavedAssociationsTime = 0L
     private val associationsSaveInterval = 5000L
+    private var soundPool: SoundPool? = null
+    private var keyClickSoundId = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -109,6 +112,8 @@ class BoshiamyInputMethodService : InputMethodService(),
     override fun onDestroy() {
         serviceScope.cancel()
         prefs.unregisterOnSharedPreferenceChangeListener(themeChangeListener)
+        soundPool?.release()
+        soundPool = null
         super.onDestroy()
     }
 
@@ -129,6 +134,8 @@ class BoshiamyInputMethodService : InputMethodService(),
         keyboardView = container.findViewById(R.id.boshiamy_keyboard_view)
         candidateBar = container.findViewById(R.id.candidate_bar)
         btnCandidateDelete = container.findViewById(R.id.btn_candidate_delete)
+
+        setupSoundPool()
 
         keyboardView.setOnKeyPressListener(this)
         candidateBar.setOnCandidateClickListener(this)
@@ -153,6 +160,19 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
 
         return container
+    }
+
+    private fun setupSoundPool() {
+        soundPool = SoundPool.Builder()
+            .setMaxStreams(1)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+        keyClickSoundId = soundPool?.load(this, R.raw.key_click, 1) ?: 0
     }
 
     private fun loadThemeColors() {
@@ -210,13 +230,16 @@ class BoshiamyInputMethodService : InputMethodService(),
                 )
 
                 when {
-                    isUri || isWebEdit || hasSubmitAction -> {
-                        val action = if (hasSubmitAction) explicitAction else EditorInfo.IME_ACTION_SEARCH
-                        inputConnection.performEditorAction(action)
+                    isUri || isWebEdit -> {
+                        inputConnection.performEditorAction(EditorInfo.IME_ACTION_SEARCH)
                         inputConnection.commitText("", 0)
                     }
                     isMultiline -> {
                         inputConnection.commitText("\n", 1)
+                    }
+                    hasSubmitAction -> {
+                        inputConnection.performEditorAction(explicitAction)
+                        inputConnection.commitText("", 0)
                     }
                     else -> {
                         inputConnection.commitText("\n", 1)
@@ -442,6 +465,10 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     private fun showInputError() {
+        engineManager.clearInput()
+        zhuyinInput = ""
+        currentInputConnection?.finishComposingText()
+        candidateBar.setCandidates(emptyList())
         candidateBar.showError("查無此字")
         candidateBar.visibility = View.VISIBLE
     }
@@ -515,20 +542,25 @@ class BoshiamyInputMethodService : InputMethodService(),
         if (prefs.getBoolean("vibrate", true)) {
             val vibrator = getSystemService(Vibrator::class.java)
             if (vibrator != null && vibrator.hasVibrator()) {
+                val strength = prefs.getInt("vibrate_strength", 50).coerceIn(0, 100)
                 when {
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> vibrator.vibrate(
-                        VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)
-                    )
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                        if (strength > 0) {
+                            val amplitude = (strength * 254 / 100) + 1
+                            vibrator.vibrate(
+                                VibrationEffect.createOneShot(18, amplitude)
+                            )
+                        }
+                    }
                     else -> {
                         @Suppress("DEPRECATION")
-                        vibrator.vibrate(18)
+                        vibrator.vibrate((10 + strength / 5).toLong())
                     }
                 }
             }
         }
-        if (prefs.getBoolean("sound", false)) {
-            val audioManager = getSystemService(AudioManager::class.java)
-            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD)
+        if (prefs.getBoolean("sound", false) && keyClickSoundId != 0) {
+            soundPool?.play(keyClickSoundId, 1f, 1f, 1, 0, 1f)
         }
     }
 

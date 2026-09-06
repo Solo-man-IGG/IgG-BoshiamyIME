@@ -14,6 +14,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
@@ -53,7 +54,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private val allowedPrefKeys = listOf(
         "default_input_mode", "keyboard_scale",
-        "vibrate", "sound", "full_width",
+        "vibrate", "vibrate_strength", "sound", "full_width",
         "theme_mode",
         "theme_bg", "theme_text", "theme_key_bg", "theme_key_pressed", "theme_border"
     )
@@ -95,7 +96,7 @@ class SettingsActivity : AppCompatActivity() {
 
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
-        setupSwitch(R.id.switch_vibrate, "vibrate", true)
+        setupVibrateControls()
         setupSwitch(R.id.switch_sound, "sound", false)
         setupSwitch(R.id.switch_full_width, "full_width", false)
 
@@ -173,6 +174,36 @@ class SettingsActivity : AppCompatActivity() {
         sw.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(key, isChecked).apply()
         }
+    }
+
+    private fun setupVibrateControls() {
+        val switchVibrate = findViewById<Switch>(R.id.switch_vibrate)
+        val strengthRow = findViewById<View>(R.id.vibrate_strength_row)
+        val seekBar = findViewById<SeekBar>(R.id.seek_vibrate_strength)
+        val label = findViewById<TextView>(R.id.tv_vibrate_strength)
+
+        switchVibrate.isChecked = prefs.getBoolean("vibrate", true)
+        switchVibrate.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("vibrate", isChecked).apply()
+            strengthRow.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        val saved = prefs.getInt("vibrate_strength", 50).coerceIn(0, 100)
+        seekBar.progress = saved
+        label.text = saved.toString()
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                label.text = progress.toString()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                prefs.edit().putInt("vibrate_strength", seekBar?.progress ?: 50).apply()
+            }
+        })
+
+        strengthRow.visibility = if (switchVibrate.isChecked) View.VISIBLE else View.GONE
     }
 
     private fun applyPreview(btn: Button, color: Int) {
@@ -462,8 +493,13 @@ class SettingsActivity : AppCompatActivity() {
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
         setupThemeModeSpinner()
-        findViewById<Switch>(R.id.switch_vibrate).isChecked =
-            prefs.getBoolean("vibrate", true)
+        val vibrateOn = prefs.getBoolean("vibrate", true)
+        findViewById<Switch>(R.id.switch_vibrate).isChecked = vibrateOn
+        findViewById<View>(R.id.vibrate_strength_row).visibility =
+            if (vibrateOn) View.VISIBLE else View.GONE
+        val strength = prefs.getInt("vibrate_strength", 50).coerceIn(0, 100)
+        findViewById<SeekBar>(R.id.seek_vibrate_strength).progress = strength
+        findViewById<TextView>(R.id.tv_vibrate_strength).text = strength.toString()
         findViewById<Switch>(R.id.switch_sound).isChecked =
             prefs.getBoolean("sound", false)
         findViewById<Switch>(R.id.switch_full_width).isChecked =
