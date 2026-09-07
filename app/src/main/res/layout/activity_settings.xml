@@ -371,6 +371,48 @@
             android:background="#E0E0E0"
             android:layout_marginBottom="16dp" />
 
+        <!-- ===================== 版本更新 ===================== -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="版本更新"
+            android:textSize="14sp"
+            android:textColor="#1A73E8"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_app_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="目前版本：--"
+            android:textSize="14sp"
+            android:textColor="#5F6368" />
+
+        <Button
+            android:id="@+id/btn_check_update"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="檢查更新"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_update_status2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#5F6368"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0"
+            android:layout_marginBottom="16dp" />
+
         <!-- ===================== 資料管理 ===================== -->
         <TextView
             android:layout_width="wrap_content"
@@ -424,7 +466,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="璦閣輸入法 v1.0.2&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
+            android:text="璦閣輸入法 v1.0.3&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
             android:textSize="13sp"
             android:textColor="#5F6368"
             android:lineSpacingExtra="4dp" />

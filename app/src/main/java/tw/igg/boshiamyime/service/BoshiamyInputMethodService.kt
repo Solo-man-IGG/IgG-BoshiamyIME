@@ -399,6 +399,11 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     private fun deleteEditorGrapheme() {
         val inputConnection = currentInputConnection ?: return
+        val selected = inputConnection.getSelectedText(0)?.toString()
+        if (!selected.isNullOrEmpty()) {
+            inputConnection.commitText("", 1)
+            return
+        }
         val before = inputConnection.getTextBeforeCursor(2, 0)?.toString() ?: ""
         if (before.isEmpty()) {
             inputConnection.deleteSurroundingText(1, 0)

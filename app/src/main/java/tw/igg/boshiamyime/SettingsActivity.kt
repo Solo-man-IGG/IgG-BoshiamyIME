@@ -1,11 +1,15 @@
 package tw.igg.boshiamyime
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -21,18 +25,25 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import tw.igg.boshiamyime.data.AppUpdater
 import tw.igg.boshiamyime.data.DictionaryDownloader
 import tw.igg.boshiamyime.theme.ThemePalette
 import tw.igg.boshiamyime.ui.KeyboardPreviewView
+import java.io.File
 import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var downloader: DictionaryDownloader
+    private lateinit var appUpdater: AppUpdater
+
+    private lateinit var tvAppVersion: TextView
+    private lateinit var btnCheckUpdate: Button
 
     private lateinit var preview: KeyboardPreviewView
     private lateinit var customThemeContainer: View
@@ -104,6 +115,7 @@ class SettingsActivity : AppCompatActivity() {
         setupThemeControls()
         setupDictManagement()
         setupDataButtons()
+        setupUpdateChecker()
 
         updateThemeUi()
         refreshPreview()
@@ -430,6 +442,114 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_import_settings).setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        }
+    }
+
+    private fun setupUpdateChecker() {
+        tvAppVersion = findViewById(R.id.tv_app_version)
+        btnCheckUpdate = findViewById(R.id.btn_check_update)
+        tvUpdateStatus = findViewById(R.id.tv_update_status2)
+        appUpdater = AppUpdater(this)
+
+        tvAppVersion.text = "目前版本：v${currentVersionName()}"
+        btnCheckUpdate.setOnClickListener {
+            checkForUpdate(showResult = true)
+        }
+        checkForUpdate(showResult = false)
+    }
+
+    private fun currentVersionName(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+        } catch (e: Exception) {
+            "?"
+        }
+    }
+
+    private fun checkForUpdate(showResult: Boolean) {
+        tvUpdateStatus.text = if (showResult) "正在檢查更新..." else "正在檢查更新（自動）..."
+        val current = currentVersionName()
+        lifecycleScope.launch {
+            val result = appUpdater.checkUpdate(current)
+            runOnUiThread {
+                when {
+                    result.error != null -> {
+                        tvUpdateStatus.text = if (showResult) {
+                            "檢查失敗：${result.error}"
+                        } else {
+                            ""
+                        }
+                    }
+                    !result.updateAvailable -> {
+                        tvUpdateStatus.text = if (result.latestVersion != null) {
+                            "已是最新版本（v${result.latestVersion}）"
+                        } else {
+                            "已是最新版本"
+                        }
+                    }
+                    else -> {
+                        tvUpdateStatus.text = "發現新版 v${result.latestVersion}！"
+                        promptDownload(result.apkUrl, result.apkName, result.latestVersion)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun promptDownload(apkUrl: String?, apkName: String?, latest: String?) {
+        if (apkUrl.isNullOrEmpty() || apkName.isNullOrEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle("發現新版 v$latest")
+            .setMessage("有新版本可以更新，是否現在下載並安裝？")
+            .setPositiveButton("下載並安裝") { _, _ ->
+                startDownloadUpdate(apkUrl, apkName)
+            }
+            .setNegativeButton("稍後", null)
+            .show()
+    }
+
+    private fun startDownloadUpdate(apkUrl: String, apkName: String) {
+        tvUpdateStatus.text = "正在下載新版..."
+        lifecycleScope.launch {
+            val file = appUpdater.downloadApk(apkUrl, apkName)
+            runOnUiThread {
+                if (file != null) {
+                    tvUpdateStatus.text = "下載完成，準備安裝..."
+                    installApk(file)
+                } else {
+                    tvUpdateStatus.text = "下載失敗，請稍後再試"
+                }
+            }
+        }
+    }
+
+    @SuppressLint("QueryPermissionsNeeded")
+    private fun installApk(file: File) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !packageManager.canRequestPackageInstalls()
+        ) {
+            Toast.makeText(this, "請先允許「安裝未知來源應用程式」", Toast.LENGTH_LONG).show()
+            try {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            } catch (_: Exception) {
+            }
+            return
+        }
+        try {
+            val apkUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            tvUpdateStatus.text = "請於安裝畫面按下「安裝」"
+        } catch (e: Exception) {
+            tvUpdateStatus.text = "無法啟動安裝：${e.message}"
         }
     }
 
