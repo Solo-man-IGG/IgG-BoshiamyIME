@@ -217,9 +217,12 @@ class BoshiamyInputMethodService : InputMethodService(),
                 val imeOptions = editorInfo?.imeOptions ?: 0
 
                 val isMultiline = (inputType and EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE) != 0
-                val isUri = (inputType and EditorInfo.TYPE_MASK_VARIATION) == EditorInfo.TYPE_TEXT_VARIATION_URI
-                val isWebEdit = (inputType and EditorInfo.TYPE_MASK_VARIATION) == EditorInfo.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
+                val variation = inputType and EditorInfo.TYPE_MASK_VARIATION
+                val isUri = variation == EditorInfo.TYPE_TEXT_VARIATION_URI
+                val isWebEdit = variation == EditorInfo.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT
                 val explicitAction = imeOptions and EditorInfo.IME_MASK_ACTION
+                val isSearchAction = explicitAction == EditorInfo.IME_ACTION_SEARCH ||
+                    explicitAction == EditorInfo.IME_ACTION_GO
 
                 val hasSubmitAction = explicitAction in intArrayOf(
                     EditorInfo.IME_ACTION_SEARCH,
@@ -232,6 +235,10 @@ class BoshiamyInputMethodService : InputMethodService(),
                 when {
                     isUri || isWebEdit -> {
                         inputConnection.performEditorAction(EditorInfo.IME_ACTION_SEARCH)
+                        inputConnection.commitText("", 0)
+                    }
+                    isSearchAction -> {
+                        inputConnection.performEditorAction(explicitAction)
                         inputConnection.commitText("", 0)
                     }
                     isMultiline -> {
@@ -440,7 +447,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun showComposition(text: String) {
         val inputConnection = currentInputConnection ?: return
         if (text.isEmpty()) {
-            inputConnection.finishComposingText()
+            inputConnection.commitText("", 1)
         } else {
             inputConnection.setComposingText(text, 1)
         }
