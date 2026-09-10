@@ -319,10 +319,20 @@ class BoshiamyInputMethodService : InputMethodService(),
                     zhuyinInput += zhuyinEngine.symbolToCode(key)
                     updateZhuyinCandidates()
                 } else {
-                    if (engineManager.keyboardMode == KeyboardMode.QWERTY &&
-                        key.length == 1 && key[0].isDigit()) {
-                        commitDirectText(key)
-                        return
+                    if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
+                        if ((isShifted || isCapsLock) && key.length == 1 &&
+                            (key[0].isLetter() || key == "," || key == ".")) {
+                            flushAndCommitDirect(key.uppercase())
+                            if (isShifted && !isCapsLock) {
+                                isShifted = false
+                                keyboardView.setShifted(false)
+                            }
+                            return
+                        }
+                        if (key.length == 1 && key[0].isDigit()) {
+                            flushAndCommitDirect(key)
+                            return
+                        }
                     }
                     val typed = if (isShifted || isCapsLock) key.uppercase() else key
                     engineManager.appendInput(typed)
@@ -344,9 +354,10 @@ class BoshiamyInputMethodService : InputMethodService(),
             engineManager.keyboardMode == KeyboardMode.T9 && key.length == 1 && key[0].isDigit() -> {
                 commitDirectText(key)
             }
-            engineManager.keyboardMode == KeyboardMode.QWERTY && key.length == 1 && key[0].isLetter() -> {
+            engineManager.keyboardMode == KeyboardMode.QWERTY && key.length == 1 &&
+                (key[0].isLetter() || key == "," || key == ".") -> {
                 val output = if (isShifted || isCapsLock) key.uppercase() else key
-                commitDirectText(output)
+                flushAndCommitDirect(output)
                 if (isShifted && !isCapsLock) {
                     isShifted = false
                     keyboardView.setShifted(false)
@@ -579,6 +590,11 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun commitDirectText(text: String) {
         val inputConnection = currentInputConnection ?: return
         inputConnection.commitText(toFullWidth(text), 1)
+    }
+
+    private fun flushAndCommitDirect(text: String) {
+        commitRawInput()
+        commitDirectText(text)
     }
 
     private fun toFullWidth(text: String): String {
