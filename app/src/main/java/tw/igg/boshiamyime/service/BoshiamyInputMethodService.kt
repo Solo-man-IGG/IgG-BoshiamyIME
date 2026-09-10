@@ -70,6 +70,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private val associationsSaveInterval = 5000L
     private var soundPool: SoundPool? = null
     private var keyClickSoundId = 0
+    private var soundReady = false
 
     override fun onCreate() {
         super.onCreate()
@@ -166,8 +167,10 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     private fun setupSoundPool() {
+        soundPool?.release()
+        soundPool = null
         soundPool = SoundPool.Builder()
-            .setMaxStreams(1)
+            .setMaxStreams(3)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
@@ -175,6 +178,11 @@ class BoshiamyInputMethodService : InputMethodService(),
                     .build()
             )
             .build()
+        keyClickSoundId = 0
+        soundReady = false
+        soundPool?.setOnLoadCompleteListener { _, _, status ->
+            soundReady = status == 0
+        }
         keyClickSoundId = soundPool?.load(this, R.raw.key_click, 1) ?: 0
     }
 
@@ -612,8 +620,12 @@ class BoshiamyInputMethodService : InputMethodService(),
                 }
             }
         }
-        if (prefs.getBoolean("sound", false) && keyClickSoundId != 0) {
-            soundPool?.play(keyClickSoundId, 1f, 1f, 1, 0, 1f)
+        if (prefs.getBoolean("sound", false)) {
+            if (keyClickSoundId != 0 && soundReady) {
+                if (soundPool?.play(keyClickSoundId, 1f, 1f, 1, 0, 1f) == 0) {
+                    setupSoundPool()
+                }
+            }
         }
     }
 

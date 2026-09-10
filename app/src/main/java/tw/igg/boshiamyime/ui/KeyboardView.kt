@@ -256,7 +256,7 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("mode"), KeyData("sym"),
                     KeyData("space", width = 2)
                 ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
-                listOf(KeyData("⏎"), KeyData("😊"))
+                listOf(KeyData("😊"), KeyData("⏎"))
             )
             KeyboardLayout.QWERTY -> listOf(
                 listOf(
@@ -272,18 +272,18 @@ class KeyboardView @JvmOverloads constructor(
                 listOf(
                     KeyData("a"), KeyData("s"), KeyData("d"), KeyData("f"), KeyData("g"),
                     KeyData("h"), KeyData("j"), KeyData("k"), KeyData("l")
-                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()),
+                ),
                 listOf(
                     KeyData("⇧", width = 1, isAction = true),
                     KeyData("z"), KeyData("x"), KeyData("c"),
-                    KeyData("v"), KeyData("b"), KeyData("n"), KeyData("m"),
-                    KeyData("⏎", width = 1, isAction = true)
-                ),
+                    KeyData("v"), KeyData("b"), KeyData("n"), KeyData("m")
+                ) + (if (showBottomDelete) listOf(KeyData("⌫"))
+                    else listOf(KeyData("⏎", width = 1, isAction = true))),
                 listOf(
                     KeyData("mode"), KeyData("sym"),
                     KeyData(","), KeyData("space", width = 5),
                     KeyData("."), KeyData("😊")
-                )
+                ) + (if (showBottomDelete) listOf(KeyData("⏎")) else emptyList())
             )
             KeyboardLayout.ZHUYIN -> listOf(
                 listOf(
@@ -314,7 +314,7 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("mode"), KeyData("sym"),
                     KeyData("ㄦ"), KeyData("space", width = 2)
                 ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
-                listOf(KeyData("⏎"), KeyData("😊"))
+                listOf(KeyData("😊"), KeyData("⏎"))
             )
             KeyboardLayout.NUMBER -> listOf(
                 listOf(
