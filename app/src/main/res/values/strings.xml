@@ -45,4 +45,13 @@
         <item>system</item>
         <item>custom</item>
     </string-array>
+
+    <string-array name="delete_key_options">
+        <item>Enter 旁（標準位置，建議）</item>
+        <item>候選列上方（原位置）</item>
+    </string-array>
+    <string-array name="delete_key_values">
+        <item>enter</item>
+        <item>top</item>
+    </string-array>
 </resources>

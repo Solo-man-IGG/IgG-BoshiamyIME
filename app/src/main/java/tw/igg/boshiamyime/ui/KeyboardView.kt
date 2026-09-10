@@ -93,6 +93,29 @@ class KeyboardView @JvmOverloads constructor(
 
     private var emojiCategory = 0
 
+    private var showBottomDelete = false
+    private val deleteRepeatHandler = Handler(Looper.getMainLooper())
+    private val deleteRepeatRunnable = object : Runnable {
+        override fun run() {
+            listener?.onKeyPress("⌫")
+            deleteRepeatHandler.postDelayed(this, 70)
+        }
+    }
+
+    fun setBottomDeleteEnabled(enabled: Boolean) {
+        if (showBottomDelete != enabled) {
+            showBottomDelete = enabled
+            refreshLayout()
+        }
+    }
+
+    fun refreshLayout() {
+        keys = createLayout(currentLayout)
+        keyRects.clear()
+        requestLayout()
+        invalidate()
+    }
+
     fun setEmojiCategory(index: Int) {
         if (emojiCategory != index && currentLayout == KeyboardLayout.EMOJI) {
             emojiCategory = index.coerceIn(emojiCategories.indices)
@@ -231,8 +254,9 @@ class KeyboardView @JvmOverloads constructor(
                 listOf(KeyData(",", ""), KeyData("0"), KeyData(".", "")),
                 listOf(
                     KeyData("mode"), KeyData("sym"),
-                    KeyData("space", width = 2), KeyData("⏎"), KeyData("😊")
-                )
+                    KeyData("space", width = 2)
+                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
+                listOf(KeyData("⏎"), KeyData("😊"))
             )
             KeyboardLayout.QWERTY -> listOf(
                 listOf(
@@ -248,7 +272,7 @@ class KeyboardView @JvmOverloads constructor(
                 listOf(
                     KeyData("a"), KeyData("s"), KeyData("d"), KeyData("f"), KeyData("g"),
                     KeyData("h"), KeyData("j"), KeyData("k"), KeyData("l")
-                ),
+                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()),
                 listOf(
                     KeyData("⇧", width = 1, isAction = true),
                     KeyData("z"), KeyData("x"), KeyData("c"),
@@ -288,9 +312,9 @@ class KeyboardView @JvmOverloads constructor(
                 ),
                 listOf(
                     KeyData("mode"), KeyData("sym"),
-                    KeyData("ㄦ"), KeyData("space", width = 3),
-                    KeyData("⏎"), KeyData("😊")
-                )
+                    KeyData("ㄦ"), KeyData("space", width = 2)
+                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
+                listOf(KeyData("⏎"), KeyData("😊"))
             )
             KeyboardLayout.NUMBER -> listOf(
                 listOf(
@@ -313,8 +337,9 @@ class KeyboardView @JvmOverloads constructor(
                 ),
                 listOf(
                     KeyData("ABC", width = 2), KeyData("%"),
-                    KeyData("space", width = 4), KeyData("⏎")
-                )
+                    KeyData("space", width = 3)
+                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
+                listOf(KeyData("⏎"))
             )
             KeyboardLayout.SYMBOL -> listOf(
                 listOf(
@@ -342,8 +367,9 @@ class KeyboardView @JvmOverloads constructor(
                 ),
                 listOf(
                     KeyData("ABC", width = 2), KeyData("✕", "關閉"),
-                    KeyData("space", width = 4), KeyData("⏎")
-                )
+                    KeyData("space", width = 3)
+                ) + (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
+                listOf(KeyData("⏎"))
             )
             KeyboardLayout.EMOJI -> {
                 val cat = emojiCategories[emojiCategory]
@@ -354,7 +380,9 @@ class KeyboardView @JvmOverloads constructor(
                     row.map { KeyData(it) }
                 }
                 rows + listOf(
-                    tabRow + listOf(KeyData("✕", "關閉"), KeyData("space", width = 4), KeyData("⏎"))
+                    tabRow + listOf(KeyData("✕", "關閉"), KeyData("space", width = 3)) +
+                        (if (showBottomDelete) listOf(KeyData("⌫")) else emptyList()) +
+                        listOf(KeyData("⏎"))
                 )
             }
         }
@@ -475,7 +503,12 @@ class KeyboardView @JvmOverloads constructor(
                             longPressTriggered = true
                             pressedKey = null
                             invalidate()
-                            listener?.onLongPress(key)
+                            if (key == "⌫") {
+                                listener?.onKeyPress("⌫")
+                                deleteRepeatHandler.postDelayed(deleteRepeatRunnable, 350)
+                            } else {
+                                listener?.onLongPress(key)
+                            }
                         }
                     }, longPressDelay)
                     invalidate()
@@ -496,6 +529,7 @@ class KeyboardView @JvmOverloads constructor(
             MotionEvent.ACTION_UP -> {
                 val key = getKeyAt(event.x, event.y)
                 longPressHandler.removeCallbacksAndMessages(null)
+                deleteRepeatHandler.removeCallbacks(deleteRepeatRunnable)
                 pressedKey = null
                 invalidate()
 
@@ -514,6 +548,7 @@ class KeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacksAndMessages(null)
+                deleteRepeatHandler.removeCallbacks(deleteRepeatRunnable)
                 pressedKey = null
                 spaceDragActive = false
                 invalidate()

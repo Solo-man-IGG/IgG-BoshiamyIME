@@ -124,6 +124,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             when {
                 key != null && key.startsWith("theme_") -> loadThemeColors()
                 key == "keyboard_scale" -> keyboardView.setScale(prefs.getFloat("keyboard_scale", 1.0f))
+                key == "delete_key_location" -> applyDeleteKeyLocation()
             }
         }
 
@@ -148,6 +149,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         keyboardView.setLayout(initialLayout)
         keyboardView.setModeLabel(engineManager.keyboardMode.displayName)
         keyboardView.setScale(prefs.getFloat("keyboard_scale", 1.0f))
+        applyDeleteKeyLocation()
         loadThemeColors()
 
         btnCandidateDelete.setOnTouchListener(deleteTouchListener)
@@ -197,6 +199,13 @@ class BoshiamyInputMethodService : InputMethodService(),
         isCapsLock = false
         lastShiftTime = 0L
         keyboardView.setShifted(false)
+    }
+
+    private fun applyDeleteKeyLocation() {
+        if (!::keyboardView.isInitialized) return
+        val bottom = prefs.getString("delete_key_location", "enter") != "top"
+        keyboardView.setBottomDeleteEnabled(bottom)
+        btnCandidateDelete.visibility = if (bottom) View.GONE else View.VISIBLE
     }
 
     override fun onKeyPress(key: String) {

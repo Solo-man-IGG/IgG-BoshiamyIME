@@ -64,7 +64,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvUpdateStatus: TextView
 
     private val allowedPrefKeys = listOf(
-        "default_input_mode", "keyboard_scale",
+        "default_input_mode", "keyboard_scale", "delete_key_location",
         "vibrate", "vibrate_strength", "sound", "full_width",
         "theme_mode",
         "theme_bg", "theme_text", "theme_key_bg", "theme_key_pressed", "theme_border"
@@ -107,6 +107,7 @@ class SettingsActivity : AppCompatActivity() {
 
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
+        setupDeleteKeySpinner()
         setupVibrateControls()
         setupSwitch(R.id.switch_sound, "sound", false)
         setupSwitch(R.id.switch_full_width, "full_width", false)
@@ -164,6 +165,17 @@ class SettingsActivity : AppCompatActivity() {
             prefs.getFloat("keyboard_scale", 1.0f).toString()
         ) { value ->
             prefs.edit().putFloat("keyboard_scale", value.toFloatOrNull() ?: 1.0f).apply()
+        }
+    }
+
+    private fun setupDeleteKeySpinner() {
+        setupSpinner(
+            R.id.spinner_delete_key,
+            resources.getStringArray(R.array.delete_key_options),
+            resources.getStringArray(R.array.delete_key_values),
+            prefs.getString("delete_key_location", "enter") ?: "enter"
+        ) { value ->
+            prefs.edit().putString("delete_key_location", value).apply()
         }
     }
 
@@ -612,6 +624,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun reloadAllUi() {
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
+        setupDeleteKeySpinner()
         setupThemeModeSpinner()
         val vibrateOn = prefs.getBoolean("vibrate", true)
         findViewById<Switch>(R.id.switch_vibrate).isChecked = vibrateOn
