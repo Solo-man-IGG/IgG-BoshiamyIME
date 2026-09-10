@@ -63,6 +63,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private var isCapsLock = false
     private var lastShiftTime = 0L
     private var zhuyinInput = ""
+    private var zhuyinComplete = false
     private var lastCommittedChar = ""
     private var previousKeyboardMode: KeyboardMode = KeyboardMode.T9
     private var lastSavedAssociationsTime = 0L
@@ -188,6 +189,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         super.onStartInputView(attribute, restarting)
         engineManager.clearInput()
         zhuyinInput = ""
+        zhuyinComplete = false
         lastCommittedChar = ""
         candidateBar.setCandidates(emptyList())
         keyboardView.setSpaceHint("")
@@ -256,7 +258,10 @@ class BoshiamyInputMethodService : InputMethodService(),
             "space" -> when {
                 engineManager.keyboardMode == KeyboardMode.ZHUYIN ->
                     if (zhuyinInput.isNotEmpty()) {
-                        commitFirstCandidateZhuyin()
+                        if (!zhuyinComplete) {
+                            zhuyinComplete = true
+                            updateZhuyinCandidates()
+                        }
                     } else {
                         commitDirectText(" ")
                     }
@@ -316,8 +321,25 @@ class BoshiamyInputMethodService : InputMethodService(),
                     return
                 }
                 if (engineManager.keyboardMode == KeyboardMode.ZHUYIN) {
-                    zhuyinInput += zhuyinEngine.symbolToCode(key)
-                    updateZhuyinCandidates()
+                    val code = zhuyinEngine.symbolToCode(key)
+                    val isTone = zhuyinEngine.isToneKey(code)
+                    when {
+                        isTone && zhuyinComplete -> {
+                        }
+                        isTone && zhuyinInput.isEmpty() -> {
+                        }
+                        zhuyinComplete -> {
+                            zhuyinInput = ""
+                            zhuyinInput += code
+                            zhuyinComplete = false
+                            updateZhuyinCandidates()
+                        }
+                        else -> {
+                            zhuyinInput += code
+                            if (isTone) zhuyinComplete = true
+                            updateZhuyinCandidates()
+                        }
+                    }
                 } else {
                     if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
                         if ((isShifted || isCapsLock) && key.length == 1 &&
@@ -399,6 +421,7 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun handleDelete() {
         if (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty()) {
             zhuyinInput = zhuyinInput.dropLast(1)
+            zhuyinComplete = false
             updateZhuyinCandidates()
         } else if (!engineManager.isEmpty) {
             engineManager.deleteLastInput()
@@ -448,7 +471,11 @@ class BoshiamyInputMethodService : InputMethodService(),
     }
 
     private fun updateZhuyinCandidates() {
-        val candidates = zhuyinEngine.lookupPrefix(zhuyinInput)
+        val candidates = if (zhuyinComplete) {
+            zhuyinEngine.lookup(zhuyinInput)
+        } else {
+            zhuyinEngine.lookupPrefix(zhuyinInput)
+        }
         candidateBar.setCandidates(candidates)
         keyboardView.setSpaceHint("")
 
@@ -490,19 +517,11 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun showInputError() {
         engineManager.clearInput()
         zhuyinInput = ""
+        zhuyinComplete = false
         currentInputConnection?.finishComposingText()
         candidateBar.setCandidates(emptyList())
         candidateBar.showError("查無此字")
         candidateBar.visibility = View.VISIBLE
-    }
-
-    private fun commitFirstCandidateZhuyin() {
-        val candidates = zhuyinEngine.lookupPrefix(zhuyinInput)
-        if (candidates.isNotEmpty()) {
-            commitCandidate(candidates.first())
-        } else {
-            commitRawZhuyin()
-        }
     }
 
     private fun commitRawInput() {
@@ -525,6 +544,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             inputConnection.commitText(zhuyinInput, 1)
             lastCommittedChar = ""
             zhuyinInput = ""
+            zhuyinComplete = false
             candidateBar.setCandidates(emptyList())
             candidateBar.visibility = View.GONE
         }
@@ -541,6 +561,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         lastCommittedChar = candidate.char
         engineManager.clearInput()
         zhuyinInput = ""
+        zhuyinComplete = false
 
         val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
         keyboardView.setSpaceHint(bopomofo)
@@ -623,6 +644,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         currentInputConnection?.finishComposingText()
         engineManager.clearInput()
         zhuyinInput = ""
+        zhuyinComplete = false
         if (lastCommittedChar.isNotEmpty()) {
             dictionaryManager.saveLearnedAssociations(prefs)
         }
@@ -648,6 +670,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
         engineManager.switchKeyboard(nextMode)
         zhuyinInput = ""
+        zhuyinComplete = false
 
         val layout = when (nextMode) {
             KeyboardMode.T9 -> KeyboardView.KeyboardLayout.T9

@@ -11,7 +11,6 @@ class ZhuyinEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "ZhuyinEngine"
-        private const val MAX_CANDIDATES = 9
 
         val KEY_TO_BOPOMOFO = mapOf(
             ',' to "ㄝ", '-' to "ㄦ", '.' to "ㄡ", '/' to "ㄥ",
@@ -114,7 +113,6 @@ class ZhuyinEngine(private val context: Context) {
             .sortedByDescending { it.frequency }
             .map { Candidate(code = it.code, char = it.char, frequency = it.frequency) }
             .filter { seen.add(it.char) }
-            .take(MAX_CANDIDATES)
     }
 
     fun lookupPrefix(prefix: String): List<Candidate> {
@@ -127,7 +125,6 @@ class ZhuyinEngine(private val context: Context) {
             .sortedByDescending { it.frequency }
             .map { Candidate(code = it.code, char = it.char, frequency = it.frequency) }
             .filter { seen.add(it.char) }
-            .take(MAX_CANDIDATES)
     }
 
     fun isLoaded(): Boolean = loaded
