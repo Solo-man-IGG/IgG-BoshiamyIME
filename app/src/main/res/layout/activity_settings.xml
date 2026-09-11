@@ -480,7 +480,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="璦閣輸入法 v1.0.8&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
+            android:text="璦閣輸入法 v1.0.9&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
             android:textSize="13sp"
             android:textColor="#5F6368"
             android:lineSpacingExtra="4dp" />

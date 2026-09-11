@@ -263,7 +263,7 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("1"), KeyData("2"), KeyData("3"),
                     KeyData("4"), KeyData("5"), KeyData("6"),
                     KeyData("7"), KeyData("8"), KeyData("9"),
-                    KeyData("0")
+                    KeyData("0"), KeyData("/")
                 ),
                 listOf(
                     KeyData("q"), KeyData("w"), KeyData("e"), KeyData("r"), KeyData("t"),
@@ -360,7 +360,7 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("[", "〔"), KeyData("]", "〕"), KeyData("{"), KeyData("}")
                 ),
                 listOf(
-                    KeyData("\\"), KeyData("|"), KeyData(";"),
+                    KeyData("\\"), KeyData("/"), KeyData("|"), KeyData(";"),
                     KeyData(":"), KeyData("\""), KeyData("'"),
                     KeyData(","), KeyData("."), KeyData("?"),
                     KeyData("!")
