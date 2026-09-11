@@ -44,11 +44,11 @@ class KeyboardPreviewView @JvmOverloads constructor(
         canvas.drawColor(palette.bg)
 
         val rows = listOf(
-            listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "/"),
+            listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
             listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
             listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
             listOf("⇧", "z", "x", "c", "v", "b", "n", "m", "⌫"),
-            listOf("mode", "#+=", ",", "space", ".", "😊", "⏎")
+            listOf("mode", "#+=", "/", ",", "space", ".", "😊", "⏎")
         )
         val pressedKey = "g"
 
@@ -59,7 +59,7 @@ class KeyboardPreviewView @JvmOverloads constructor(
         for ((rowIndex, row) in rows.withIndex()) {
             val widths = row.map {
                 when (it) {
-                    "space" -> 6
+                    "space" -> 5
                     "mode", "#+=", "😊" -> 1
                     else -> 1
                 }

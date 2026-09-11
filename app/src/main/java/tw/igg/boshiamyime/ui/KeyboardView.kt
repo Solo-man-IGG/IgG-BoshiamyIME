@@ -59,6 +59,16 @@ class KeyboardView @JvmOverloads constructor(
         typeface = Typeface.DEFAULT_BOLD
     }
 
+    private val shiftActiveColor = Color.parseColor("#1A73E8")
+    private val shiftCapsColor = Color.parseColor("#34A853")
+
+    private val shiftArrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ContextCompat.getColor(context, R.color.key_text)
+        textSize = 40f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD
+    }
+
     private val keySubTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#70757A")
         textSize = 34f
@@ -87,6 +97,8 @@ class KeyboardView @JvmOverloads constructor(
     private val tempRect = RectF()
     private var currentLayout: KeyboardLayout = KeyboardLayout.T9
     var isShifted = false
+        private set
+    var isCapsLock = false
         private set
 
     private var scaleMultiplier = 1.0f
@@ -195,13 +207,17 @@ class KeyboardView @JvmOverloads constructor(
         listener = l
     }
 
-    fun setShifted(shifted: Boolean) {
+    fun setShiftState(shifted: Boolean, capsLock: Boolean) {
+        if (isShifted == shifted && isCapsLock == capsLock) return
         isShifted = shifted
+        isCapsLock = capsLock
         if (currentLayout == KeyboardLayout.QWERTY) {
             keys = createLayout(KeyboardLayout.QWERTY)
         }
         invalidate()
     }
+
+    fun setShifted(shifted: Boolean) = setShiftState(shifted, isCapsLock)
 
     fun setThemeColors(
         bgColor: Int,
@@ -232,6 +248,7 @@ class KeyboardView @JvmOverloads constructor(
             keySubTextPaint.textSize = 34f * clamped
             spaceHintPaint.textSize = 34f * clamped
             keyTabTextPaint.textSize = 22f * clamped
+            shiftArrowPaint.textSize = 40f * clamped
             requestLayout()
             invalidate()
         }
@@ -263,7 +280,7 @@ class KeyboardView @JvmOverloads constructor(
                     KeyData("1"), KeyData("2"), KeyData("3"),
                     KeyData("4"), KeyData("5"), KeyData("6"),
                     KeyData("7"), KeyData("8"), KeyData("9"),
-                    KeyData("0"), KeyData("/")
+                    KeyData("0")
                 ),
                 listOf(
                     KeyData("q"), KeyData("w"), KeyData("e"), KeyData("r"), KeyData("t"),
@@ -281,7 +298,7 @@ class KeyboardView @JvmOverloads constructor(
                     else listOf(KeyData("⏎", width = 1, isAction = true))),
                 listOf(
                     KeyData("mode"), KeyData("sym"),
-                    KeyData(","), KeyData("space", width = 5),
+                    KeyData("/"), KeyData(","), KeyData("space", width = 5),
                     KeyData("."), KeyData("😊")
                 ) + (if (showBottomDelete) listOf(KeyData("⏎")) else emptyList())
             )
@@ -471,6 +488,15 @@ class KeyboardView @JvmOverloads constructor(
                 } else if (currentLayout == KeyboardLayout.EMOJI && isEmojiTabLabel(key.label)) {
                     canvas.drawText(
                         displayLabel, centerX, centerY + 8f, keyTabTextPaint
+                    )
+                } else if (key.label == "⇧") {
+                    shiftArrowPaint.color = when {
+                        isCapsLock -> shiftCapsColor
+                        isShifted -> shiftActiveColor
+                        else -> keyTextColor
+                    }
+                    canvas.drawText(
+                        displayLabel, centerX, centerY + 14f, shiftArrowPaint
                     )
                 } else {
                     canvas.drawText(

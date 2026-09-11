@@ -203,10 +203,11 @@ class BoshiamyInputMethodService : InputMethodService(),
         lastCommittedChar = ""
         candidateBar.setCandidates(emptyList())
         keyboardView.setSpaceHint("")
+        candidateBar.visibility = View.VISIBLE
         isShifted = false
         isCapsLock = false
         lastShiftTime = 0L
-        keyboardView.setShifted(false)
+        keyboardView.setShiftState(false, false)
     }
 
     private fun applyDeleteKeyLocation() {
@@ -293,15 +294,22 @@ class BoshiamyInputMethodService : InputMethodService(),
             }
             "⇧" -> {
                 val now = System.currentTimeMillis()
-                if (now - lastShiftTime <= 500) {
-                    isCapsLock = !isCapsLock
-                    isShifted = isCapsLock
-                } else {
-                    isCapsLock = false
-                    isShifted = !isShifted
+                val doubleTap = now - lastShiftTime <= 500
+                when {
+                    doubleTap -> {
+                        isCapsLock = !isCapsLock
+                        isShifted = isCapsLock
+                    }
+                    isCapsLock -> {
+                        isCapsLock = false
+                        isShifted = false
+                    }
+                    else -> {
+                        isShifted = !isShifted
+                    }
                 }
                 lastShiftTime = now
-                keyboardView.setShifted(isShifted)
+                keyboardView.setShiftState(isShifted, isCapsLock)
             }
             "🌐" -> {
                 toggleKeyboardMode()
@@ -364,7 +372,8 @@ class BoshiamyInputMethodService : InputMethodService(),
                             flushAndCommitDirect(key.uppercase())
                             if (isShifted && !isCapsLock) {
                                 isShifted = false
-                                keyboardView.setShifted(false)
+                                lastShiftTime = 0L
+                                keyboardView.setShiftState(false, false)
                             }
                             return
                         }
@@ -377,7 +386,8 @@ class BoshiamyInputMethodService : InputMethodService(),
                     engineManager.appendInput(typed)
                     if (isShifted && !isCapsLock) {
                         isShifted = false
-                        keyboardView.setShifted(false)
+                        lastShiftTime = 0L
+                        keyboardView.setShiftState(false, false)
                     }
                     updateCandidates()
                 }
@@ -399,7 +409,8 @@ class BoshiamyInputMethodService : InputMethodService(),
                 flushAndCommitDirect(output)
                 if (isShifted && !isCapsLock) {
                     isShifted = false
-                    keyboardView.setShifted(false)
+                    lastShiftTime = 0L
+                    keyboardView.setShiftState(false, false)
                 }
             }
         }
@@ -480,11 +491,7 @@ class BoshiamyInputMethodService : InputMethodService(),
 
         val currentInput = engineManager.currentInput
         showComposition(currentInput)
-        if (currentInput.isNotEmpty()) {
-            candidateBar.visibility = View.VISIBLE
-        } else {
-            candidateBar.visibility = View.GONE
-        }
+        candidateBar.visibility = View.VISIBLE
     }
 
     private fun updateZhuyinCandidates() {
@@ -497,11 +504,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         keyboardView.setSpaceHint("")
 
         showComposition(zhuyinEngine.codeToBopomofo(zhuyinInput))
-        if (zhuyinInput.isNotEmpty()) {
-            candidateBar.visibility = View.VISIBLE
-        } else {
-            candidateBar.visibility = View.GONE
-        }
+        candidateBar.visibility = View.VISIBLE
     }
 
     private fun showComposition(text: String) {
@@ -549,7 +552,6 @@ class BoshiamyInputMethodService : InputMethodService(),
             lastCommittedChar = ""
             engineManager.clearInput()
             candidateBar.setCandidates(emptyList())
-            candidateBar.visibility = View.GONE
         } else if (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty()) {
             commitRawZhuyin()
         }
@@ -563,7 +565,6 @@ class BoshiamyInputMethodService : InputMethodService(),
             zhuyinInput = ""
             zhuyinComplete = false
             candidateBar.setCandidates(emptyList())
-            candidateBar.visibility = View.GONE
         }
     }
 
@@ -703,7 +704,9 @@ class BoshiamyInputMethodService : InputMethodService(),
         keyboardView.setLayout(layout)
         keyboardView.setModeLabel(nextMode.displayName)
         isShifted = false
-        keyboardView.setShifted(false)
+        isCapsLock = false
+        lastShiftTime = 0L
+        keyboardView.setShiftState(false, false)
     }
 
     private fun openPanel(mode: KeyboardMode, layout: KeyboardView.KeyboardLayout) {
