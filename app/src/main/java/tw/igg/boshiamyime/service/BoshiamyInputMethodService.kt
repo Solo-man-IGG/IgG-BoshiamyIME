@@ -109,6 +109,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM) == ThemePalette.MODE_SYSTEM) {
             loadThemeColors()
         }
+        applyNavBarPadding()
     }
 
     override fun onDestroy() {
@@ -155,15 +156,25 @@ class BoshiamyInputMethodService : InputMethodService(),
 
         btnCandidateDelete.setOnTouchListener(deleteTouchListener)
 
-        ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
-            val bottom = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars()
-            ).bottom
-            v.setPadding(0, 0, 0, bottom)
+        ViewCompat.setOnApplyWindowInsetsListener(container) { _, insets ->
+            applyNavBarPadding()
             insets
         }
+        container.post { applyNavBarPadding() }
 
         return container
+    }
+
+    private fun applyNavBarPadding() {
+    if (!::container.isInitialized) return
+    val bottom = container.rootView.rootWindowInsets
+        ?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+    container.setPadding(0, 0, 0, bottom)
+}
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        applyNavBarPadding()
     }
 
     private fun setupSoundPool() {
@@ -208,6 +219,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         isCapsLock = false
         lastShiftTime = 0L
         keyboardView.setShiftState(false, false)
+        applyNavBarPadding()
     }
 
     private fun applyDeleteKeyLocation() {
