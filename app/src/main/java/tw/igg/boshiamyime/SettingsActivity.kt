@@ -10,6 +10,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.text.method.DigitsKeyListener
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -17,6 +21,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.Spinner
@@ -32,6 +37,7 @@ import org.json.JSONObject
 import tw.igg.boshiamyime.data.AppUpdater
 import tw.igg.boshiamyime.data.DictionaryDownloader
 import tw.igg.boshiamyime.theme.ThemePalette
+import tw.igg.boshiamyime.ui.ColorPaletteView
 import tw.igg.boshiamyime.ui.KeyboardPreviewView
 import java.io.File
 import java.util.Locale
@@ -66,7 +72,6 @@ class SettingsActivity : AppCompatActivity() {
     private val allowedPrefKeys = listOf(
         "default_input_mode", "keyboard_scale", "delete_key_location",
         "vibrate", "vibrate_strength", "sound", "full_width",
-        "theme_mode",
         "theme_bg", "theme_text", "theme_key_bg", "theme_key_pressed", "theme_border"
     )
 
@@ -112,7 +117,6 @@ class SettingsActivity : AppCompatActivity() {
         setupSwitch(R.id.switch_sound, "sound", false)
         setupSwitch(R.id.switch_full_width, "full_width", false)
 
-        setupThemeModeSpinner()
         setupThemeControls()
         setupDictManagement()
         setupDataButtons()
@@ -176,19 +180,6 @@ class SettingsActivity : AppCompatActivity() {
             prefs.getString("delete_key_location", "enter") ?: "enter"
         ) { value ->
             prefs.edit().putString("delete_key_location", value).apply()
-        }
-    }
-
-    private fun setupThemeModeSpinner() {
-        setupSpinner(
-            R.id.spinner_theme_mode,
-            resources.getStringArray(R.array.theme_mode_options),
-            resources.getStringArray(R.array.theme_mode_values),
-            prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM) ?: ThemePalette.MODE_SYSTEM
-        ) { value ->
-            prefs.edit().putString("theme_mode", value).apply()
-            updateThemeUi()
-            refreshPreview()
         }
     }
 
@@ -321,53 +312,104 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showColorPicker(key: String, defaultColor: Int, onSelected: (Int) -> Unit) {
-        val preset = when (key) {
-            "theme_bg" -> intArrayOf(
-                0xFFF1F3F4.toInt(), 0xFF2B2B2B.toInt(), 0xFF1A1A2E.toInt(),
-                0xFF0F3460.toInt(), 0xFF16213E.toInt(), 0xFF533483.toInt()
-            )
-            "theme_text" -> intArrayOf(
-                0xFF202124.toInt(), 0xFFFFFFFF.toInt(), 0xFF1A73E8.toInt(),
-                0xFFD32F2F.toInt(), 0xFF388E3C.toInt(), 0xFFF57C00.toInt()
-            )
-            "theme_key_bg" -> intArrayOf(
-                0xFFFFFFFF.toInt(), 0xFFE8EAED.toInt(), 0xFF3C4043.toInt(),
-                0xFFE3F2FD.toInt(), 0xFFFDECEA.toInt(), 0xFFF1F8E9.toInt()
-            )
-            else -> intArrayOf(
-                0xFFB0B0B0.toInt(), 0xFF5F6368.toInt(), 0xFF1A73E8.toInt(),
-                0xFFD32F2F.toInt(), 0xFF202124.toInt(), 0xFFFFFFFF.toInt()
+        val density = resources.displayMetrics.density
+        val palette = ColorPaletteView(this).apply {
+            selectedColor = defaultColor
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (240 * density).toInt()
             )
         }
-        val names = preset.map(::toHex).toTypedArray()
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("選擇顏色")
-        builder.setItems(names) { _, which ->
-            if (which in preset.indices) onSelected(preset[which])
+        val et = EditText(this).apply {
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setSingleLine(true)
+            hint = "#RRGGBB"
+            keyListener = DigitsKeyListener.getInstance("0123456789ABCDEFabcdef#")
+            setText(toHex(defaultColor))
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         }
-        builder.show()
+        val swatch = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams((52 * density).toInt(), (52 * density).toInt())
+        }
+        fun paintSwatch(c: Int) {
+            swatch.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 8f
+                setColor(c)
+            }
+        }
+        paintSwatch(defaultColor)
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(swatch)
+            addView(
+                et,
+                LinearLayout.LayoutParams(0, 1, 1f).apply {
+                    marginStart = (12 * density).toInt()
+                }
+            )
+        }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(palette)
+            addView(
+                row,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (16 * density).toInt() }
+            )
+            setPadding(
+                (24 * density).toInt(), (12 * density).toInt(),
+                (24 * density).toInt(), (8 * density).toInt()
+            )
+        }
+
+        var applying = false
+        palette.onColorSelected = { c ->
+            applying = true
+            et.setText(toHex(c))
+            paintSwatch(c)
+            applying = false
+            onSelected(c)
+        }
+        et.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                if (applying) return
+                val c = parseHex(s?.toString() ?: "")
+                if (c != null) {
+                    palette.selectedColor = c
+                    paintSwatch(c)
+                    onSelected(c)
+                }
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        AlertDialog.Builder(this)
+            .setTitle("調色盤")
+            .setView(body)
+            .setPositiveButton("完成", null)
+            .show()
     }
 
     private fun updateThemeUi() {
-        val themeMode = prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM)
-        customThemeContainer.visibility =
-            if (themeMode == ThemePalette.MODE_CUSTOM) View.VISIBLE else View.GONE
+        customThemeContainer.visibility = View.VISIBLE
 
-        val custom = ThemePalette.resolve(prefs, this)
-        val isCustom = themeMode == ThemePalette.MODE_CUSTOM
-        val bg = if (isCustom) prefs.getInt("theme_bg", ThemePalette.light().bg) else custom.bg
-        val text = if (isCustom) prefs.getInt("theme_text", ThemePalette.light().text) else custom.text
-        val keyBg = if (isCustom) prefs.getInt("theme_key_bg", ThemePalette.light().keyBg) else custom.keyBg
-        val border = if (isCustom) prefs.getInt("theme_border", ThemePalette.light().border) else custom.border
-
-        applyPreview(btnThemeBg, bg)
-        applyPreview(btnThemeText, text)
-        applyPreview(btnThemeKeyBg, keyBg)
-        applyPreview(btnThemeBorder, border)
-        etThemeBg.setText(toHex(bg))
-        etThemeText.setText(toHex(text))
-        etThemeKeyBg.setText(toHex(keyBg))
-        etThemeBorder.setText(toHex(border))
+        val palette = ThemePalette.resolve(prefs, this)
+        applyPreview(btnThemeBg, palette.bg)
+        applyPreview(btnThemeText, palette.text)
+        applyPreview(btnThemeKeyBg, palette.keyBg)
+        applyPreview(btnThemeBorder, palette.border)
+        etThemeBg.setText(toHex(palette.bg))
+        etThemeText.setText(toHex(palette.text))
+        etThemeKeyBg.setText(toHex(palette.keyBg))
+        etThemeBorder.setText(toHex(palette.border))
     }
 
     private fun refreshPreview() {
@@ -625,7 +667,6 @@ class SettingsActivity : AppCompatActivity() {
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
         setupDeleteKeySpinner()
-        setupThemeModeSpinner()
         val vibrateOn = prefs.getBoolean("vibrate", true)
         findViewById<Switch>(R.id.switch_vibrate).isChecked = vibrateOn
         findViewById<View>(R.id.vibrate_strength_row).visibility =

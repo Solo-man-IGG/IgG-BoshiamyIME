@@ -37,15 +37,6 @@
         <item>1.15</item>
     </string-array>
 
-    <string-array name="theme_mode_options">
-        <item>跟隨系統深色模式</item>
-        <item>自訂色彩</item>
-    </string-array>
-    <string-array name="theme_mode_values">
-        <item>system</item>
-        <item>custom</item>
-    </string-array>
-
     <string-array name="delete_key_options">
         <item>Enter 旁（標準位置，建議）</item>
         <item>候選列上方（原位置）</item>

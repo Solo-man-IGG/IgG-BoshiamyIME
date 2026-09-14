@@ -6,9 +6,6 @@ import android.content.SharedPreferences
 
 object ThemePalette {
 
-    const val MODE_SYSTEM = "system"
-    const val MODE_CUSTOM = "custom"
-
     data class Palette(
         val bg: Int,
         val text: Int,
@@ -40,17 +37,13 @@ object ThemePalette {
     }
 
     fun resolve(prefs: SharedPreferences, context: Context): Palette {
-        val custom = Palette(
-            bg = prefs.getInt("theme_bg", light().bg),
-            text = prefs.getInt("theme_text", light().text),
-            keyBg = prefs.getInt("theme_key_bg", light().keyBg),
-            keyPressed = prefs.getInt("theme_key_pressed", light().keyPressed),
-            border = prefs.getInt("theme_border", light().border)
+        val base = if (isNight(context)) dark() else light()
+        return Palette(
+            bg = prefs.getInt("theme_bg", base.bg),
+            text = prefs.getInt("theme_text", base.text),
+            keyBg = prefs.getInt("theme_key_bg", base.keyBg),
+            keyPressed = prefs.getInt("theme_key_pressed", base.keyPressed),
+            border = prefs.getInt("theme_border", base.border)
         )
-        return if (prefs.getString("theme_mode", MODE_SYSTEM) == MODE_CUSTOM) {
-            custom
-        } else {
-            if (isNight(context)) dark() else light()
-        }
     }
 }

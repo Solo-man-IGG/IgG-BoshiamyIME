@@ -105,8 +105,7 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (::keyboardView.isInitialized &&
-            prefs.getString("theme_mode", ThemePalette.MODE_SYSTEM) == ThemePalette.MODE_SYSTEM) {
+        if (::keyboardView.isInitialized) {
             loadThemeColors()
         }
         applyNavBarPadding()
