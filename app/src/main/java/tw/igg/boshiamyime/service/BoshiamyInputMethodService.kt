@@ -289,16 +289,23 @@ class BoshiamyInputMethodService : InputMethodService(),
                     if (zhuyinInput.isNotEmpty()) {
                         if (!zhuyinComplete) {
                             zhuyinComplete = true
-                            updateZhuyinCandidates()
+                            if (zhuyinEngine.lookup(zhuyinInput).isEmpty()) {
+                                showInputError()
+                            } else {
+                                updateZhuyinCandidates()
+                            }
                         }
                     } else {
                         commitDirectText(" ")
                     }
                 engineManager.keyboardMode == KeyboardMode.T9 -> {
                     if (!engineManager.isEmpty) {
-                        commitRawInput()
+                        if (commitFirstCandidate()) {
+                            commitDirectText(" ")
+                        }
+                    } else {
+                        commitDirectText(" ")
                     }
-                    commitDirectText(" ")
                 }
                 !engineManager.isEmpty -> commitFirstCandidate()
                 else -> commitDirectText(" ")
@@ -527,20 +534,24 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
     }
 
-    private fun commitFirstCandidate() {
+    private fun commitFirstCandidate(): Boolean {
         if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
             val exact = engineManager.getExactCandidates()
             if (exact.isNotEmpty()) {
                 commitCandidate(exact.first())
+                return true
             } else {
                 showInputError()
+                return false
             }
         } else {
             val candidates = engineManager.getCandidates()
             if (candidates.isNotEmpty()) {
                 commitCandidate(candidates.first())
+                return true
             } else {
-                commitRawInput()
+                showInputError()
+                return false
             }
         }
     }
