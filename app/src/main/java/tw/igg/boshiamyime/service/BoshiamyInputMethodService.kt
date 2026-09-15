@@ -238,21 +238,11 @@ class BoshiamyInputMethodService : InputMethodService(),
             }
             "⏎" -> {
                 if (!engineManager.isEmpty) {
-                    if (hasValidCandidates()) {
-                        commitRawInput()
-                    } else {
-                        showInputError()
-                    }
+                    commitRawInput()
                     return
                 }
                 if (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty()) {
-                    if (!zhuyinComplete) zhuyinComplete = true
-                    val zhuyinCandidates = zhuyinEngine.lookup(zhuyinInput)
-                    if (zhuyinCandidates.isEmpty()) {
-                        showInputError()
-                    } else {
-                        commitRawZhuyin()
-                    }
+                    commitRawZhuyin()
                     return
                 }
                 val editorInfo = currentInputEditorInfo
@@ -543,14 +533,6 @@ class BoshiamyInputMethodService : InputMethodService(),
             inputConnection.commitText("", 1)
         } else {
             inputConnection.setComposingText(text, 1)
-        }
-    }
-
-    private fun hasValidCandidates(): Boolean {
-        return if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
-            engineManager.getExactCandidates().isNotEmpty()
-        } else {
-            engineManager.getCandidates().isNotEmpty()
         }
     }
 
