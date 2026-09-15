@@ -568,7 +568,12 @@ class BoshiamyInputMethodService : InputMethodService(),
         engineManager.clearInput()
         zhuyinInput = ""
         zhuyinComplete = false
-        currentInputConnection?.finishComposingText()
+        val inputConnection = currentInputConnection
+        if (inputConnection != null) {
+            // 真正刪除輸入區組錯的字根（finishComposingText 只去底線、不會刪字）
+            inputConnection.commitText("", 1)
+            inputConnection.finishComposingText()
+        }
         candidateBar.setCandidates(emptyList())
         candidateBar.showError("查無此字")
         candidateBar.visibility = View.VISIBLE
