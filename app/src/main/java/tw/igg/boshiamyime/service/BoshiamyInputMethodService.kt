@@ -238,7 +238,11 @@ class BoshiamyInputMethodService : InputMethodService(),
             }
             "⏎" -> {
                 if (!engineManager.isEmpty) {
-                    commitFirstCandidate()
+                    if (hasValidCandidates()) {
+                        commitRawInput()
+                    } else {
+                        showInputError()
+                    }
                     return
                 }
                 if (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty()) {
@@ -247,7 +251,7 @@ class BoshiamyInputMethodService : InputMethodService(),
                     if (zhuyinCandidates.isEmpty()) {
                         showInputError()
                     } else {
-                        commitCandidate(zhuyinCandidates.first())
+                        commitRawZhuyin()
                     }
                     return
                 }
@@ -539,6 +543,14 @@ class BoshiamyInputMethodService : InputMethodService(),
             inputConnection.commitText("", 1)
         } else {
             inputConnection.setComposingText(text, 1)
+        }
+    }
+
+    private fun hasValidCandidates(): Boolean {
+        return if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
+            engineManager.getExactCandidates().isNotEmpty()
+        } else {
+            engineManager.getCandidates().isNotEmpty()
         }
     }
 
