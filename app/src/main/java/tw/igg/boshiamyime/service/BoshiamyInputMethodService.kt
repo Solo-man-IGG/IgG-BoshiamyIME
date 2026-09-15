@@ -237,10 +237,18 @@ class BoshiamyInputMethodService : InputMethodService(),
                 handleDelete()
             }
             "⏎" -> {
-                val composing = !engineManager.isEmpty ||
-                    (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty())
-                if (composing) {
-                    commitRawInput()
+                if (!engineManager.isEmpty) {
+                    commitFirstCandidate()
+                    return
+                }
+                if (engineManager.keyboardMode == KeyboardMode.ZHUYIN && zhuyinInput.isNotEmpty()) {
+                    if (!zhuyinComplete) zhuyinComplete = true
+                    val zhuyinCandidates = zhuyinEngine.lookup(zhuyinInput)
+                    if (zhuyinCandidates.isEmpty()) {
+                        showInputError()
+                    } else {
+                        commitCandidate(zhuyinCandidates.first())
+                    }
                     return
                 }
                 val editorInfo = currentInputEditorInfo
