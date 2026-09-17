@@ -289,14 +289,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             "space" -> when {
                 engineManager.keyboardMode == KeyboardMode.ZHUYIN ->
                     if (zhuyinInput.isNotEmpty()) {
-                        if (!zhuyinComplete) {
-                            zhuyinComplete = true
-                            if (zhuyinEngine.lookup(zhuyinInput).isEmpty()) {
-                                showInputError()
-                            } else {
-                                updateZhuyinCandidates()
-                            }
-                        }
+                        commitZhuyinFirst()
                     } else {
                         commitDirectText(" ")
                     }
@@ -374,7 +367,6 @@ class BoshiamyInputMethodService : InputMethodService(),
                         isTone && zhuyinInput.isEmpty() -> {
                         }
                         zhuyinComplete -> {
-                            zhuyinInput = ""
                             zhuyinInput += code
                             zhuyinComplete = false
                             updateZhuyinCandidates()
@@ -514,17 +506,35 @@ class BoshiamyInputMethodService : InputMethodService(),
         candidateBar.visibility = View.VISIBLE
     }
 
-    private fun updateZhuyinCandidates() {
-        val candidates = if (zhuyinComplete) {
+    private fun buildZhuyinCandidates(): List<Candidate> {
+        val singles = if (zhuyinComplete) {
             zhuyinEngine.lookup(zhuyinInput)
         } else {
             zhuyinEngine.lookupPrefix(zhuyinInput)
         }
-        candidateBar.setCandidates(candidates)
+        val phrases = zhuyinEngine.lookupPhrase(zhuyinInput) { a, b ->
+            if (dictionaryManager.getAssociations(a).contains(b)) 1 else 0
+        }
+        val seen = mutableSetOf<String>()
+        return (phrases + singles).filter { seen.add(it.char) }
+    }
+
+    private fun updateZhuyinCandidates() {
+        candidateBar.setCandidates(buildZhuyinCandidates())
         keyboardView.setSpaceHint("")
 
         showComposition(zhuyinEngine.codeToBopomofo(zhuyinInput))
         candidateBar.visibility = View.VISIBLE
+    }
+
+    private fun commitZhuyinFirst(): Boolean {
+        val candidates = buildZhuyinCandidates()
+        if (candidates.isEmpty()) {
+            showInputError()
+            return false
+        }
+        commitCandidate(candidates.first())
+        return true
     }
 
     private fun showComposition(text: String) {
@@ -600,23 +610,39 @@ class BoshiamyInputMethodService : InputMethodService(),
     private fun commitCandidate(candidate: Candidate) {
         val inputConnection = currentInputConnection ?: return
         inputConnection.commitText(candidate.char, 1)
-        trackUsage(candidate.char)
+
+        val firstChar = candidate.char.firstOrNull()?.toString() ?: ""
+        val lastChar = candidate.char.lastOrNull()?.toString() ?: ""
+
+        trackUsage(firstChar)
         if (lastCommittedChar.isNotEmpty()) {
-            dictionaryManager.recordBigram(lastCommittedChar, candidate.char)
+            dictionaryManager.recordBigram(lastCommittedChar, firstChar)
             saveLearnedAssociations()
         }
-        lastCommittedChar = candidate.char
+        if (candidate.char.length > 1) {
+            val secondChar = candidate.char.getOrNull(1)?.toString() ?: ""
+            if (secondChar.isNotEmpty()) {
+                dictionaryManager.recordBigram(firstChar, secondChar)
+                saveLearnedAssociations()
+            }
+        }
+
+        lastCommittedChar = lastChar
         engineManager.clearInput()
         zhuyinInput = ""
         zhuyinComplete = false
 
-        val bopomofo = zhuyinEngine.lookupBopomofoByChar(candidate.char)
-        keyboardView.setSpaceHint(bopomofo)
+        val bizCode = dictionaryManager.lookupByChar(firstChar)?.code.orEmpty()
+        keyboardView.setSpaceHint(bizCode)
 
-        val associations = lookupEngine.lookupAssociations(candidate.char)
-        if (associations.isNotEmpty()) {
-            candidateBar.setCandidates(associations)
-            candidateBar.visibility = View.VISIBLE
+        if (candidate.char.length == 1) {
+            val associations = lookupEngine.lookupAssociations(firstChar)
+            if (associations.isNotEmpty()) {
+                candidateBar.setCandidates(associations)
+                candidateBar.visibility = View.VISIBLE
+            } else {
+                candidateBar.setCandidates(emptyList())
+            }
         } else {
             candidateBar.setCandidates(emptyList())
         }

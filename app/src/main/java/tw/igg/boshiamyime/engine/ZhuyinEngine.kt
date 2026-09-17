@@ -35,10 +35,15 @@ class ZhuyinEngine(private val context: Context) {
                 }
             }
         }
+
+        private const val TOP_N = 6
+        private const val MAX_PHRASES = 6
+        private const val BIGRAM_BONUS = 3000
     }
 
     private val entries = mutableMapOf<String, MutableList<ZhuyinEntry>>()
     private val charBopomofo = mutableMapOf<String, MutableSet<String>>()
+    private val syllPrefixTop = mutableMapOf<String, MutableList<Pair<String, Int>>>()
     private var loaded = false
 
     data class ZhuyinEntry(
@@ -70,6 +75,7 @@ class ZhuyinEngine(private val context: Context) {
     private fun parseDictionary(json: String) {
         entries.clear()
         charBopomofo.clear()
+        syllPrefixTop.clear()
         val root = JSONObject(json)
         val entriesArray = root.getJSONArray("entries")
 
@@ -90,7 +96,25 @@ class ZhuyinEngine(private val context: Context) {
             if (bopomofo.isNotEmpty()) {
                 charBopomofo.getOrPut(char) { mutableSetOf() }.add(bopomofo)
             }
+            for (len in 1..code.length) {
+                insertSyllPrefix(code.substring(0, len), char, frequency)
+            }
         }
+    }
+
+    private fun insertSyllPrefix(prefix: String, char: String, frequency: Int) {
+        val list = syllPrefixTop.getOrPut(prefix) { mutableListOf() }
+        val existing = list.indexOfFirst { it.first == char }
+        if (existing >= 0) {
+            if (frequency > list[existing].second) {
+                list[existing] = char to frequency
+                list.sortByDescending { it.second }
+            }
+            return
+        }
+        val insertAt = list.indexOfFirst { it.second < frequency }
+        if (insertAt >= 0) list.add(insertAt, char to frequency) else list.add(char to frequency)
+        if (list.size > TOP_N) list.removeAt(list.size - 1)
     }
 
     fun codeToBopomofo(code: String): String {
@@ -127,9 +151,33 @@ class ZhuyinEngine(private val context: Context) {
             .filter { seen.add(it.char) }
     }
 
-    fun isLoaded(): Boolean = loaded
+    fun lookupPhrase(keys: String, bigram: (String, String) -> Int = { _, _ -> 0 }): List<Candidate> {
+        if (!loaded || keys.length < 3) return emptyList()
 
-    fun lookupBopomofoByChar(char: String): String {
-        return charBopomofo[char]?.sorted()?.joinToString("、") ?: ""
+        val results = linkedMapOf<String, Int>()
+        for (len1 in 1 until keys.length) {
+            val s1 = keys.substring(0, len1)
+            val s2 = keys.substring(len1)
+            if (s2.isEmpty()) continue
+            val c1 = syllPrefixTop[s1] ?: continue
+            val c2 = syllPrefixTop[s2] ?: continue
+            for ((a, fa) in c1) {
+                for ((b, fb) in c2) {
+                    if (a == b) continue
+                    val phrase = a + b
+                    val bonus = if (bigram(a, b) > 0) BIGRAM_BONUS else 0
+                    val score = fa + fb + bonus
+                    val prev = results[phrase]
+                    if (prev == null || score > prev) results[phrase] = score
+                }
+            }
+        }
+
+        return results.entries
+            .sortedByDescending { it.value }
+            .take(MAX_PHRASES)
+            .map { Candidate(code = keys, char = it.key, frequency = it.value) }
     }
+
+    fun isLoaded(): Boolean = loaded
 }
