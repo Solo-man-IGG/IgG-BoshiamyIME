@@ -5,8 +5,18 @@
 
 ## 截圖
 
-> 待補：三張鍵盤模式（標準嘸蝦米／注音／T9）＋ 設定頁。
-> 歡迎發 PR 補上實機截圖（放到 `docs/screenshots/`）。
+實機畫面（v1.0.18，Android）：
+
+<p align="center">
+  <img src="docs/screenshots/Screenshot_20260917-134837.png" width="30%" alt="鍵盤主畫面 1"/>
+  <img src="docs/screenshots/Screenshot_20260917-134856.png" width="30%" alt="鍵盤主畫面 2"/>
+  <img src="docs/screenshots/Screenshot_20260917-134908.png" width="30%" alt="鍵盤主畫面 3"/>
+</p>
+<p align="center">
+  <img src="docs/screenshots/Screenshot_20260917-134936.png" width="30%" alt="鍵盤主畫面 4"/>
+  <img src="docs/screenshots/Screenshot_20260917-135001.png" width="30%" alt="鍵盤主畫面 5"/>
+  <img src="docs/screenshots/Screenshot_20260917-135023.png" width="30%" alt="鍵盤主畫面 6"/>
+</p>
 
 ---
 
@@ -16,12 +26,12 @@
 |---|---|
 | 🎹 鍵盤模式 | 標準嘸蝦米 / 注音（依字頻排序）/ T9 預測 / QWERTY 英文 |
 | 🔣 額外面板 | 符號面板、表情符號（Emoji）面板 |
-| 🧠 聯想詞 | 內建 1 萬+ 鍵、11 萬+ 詞條聯想，**並於輸入時自動學習**新詞 |
+| 🧠 聯想詞 | 內建 1 萬+ 鍵、11 萬+ 詞條聯想，**並於輸入時自動學習**新詞；注音輸入時自動結合成雙字詞（如 ㄨㄢㄕㄤ →「晚上」），越用越準 |
 | 🕶️ 主題 | 跟隨系統深色／自訂色彩（背景、文字、按鍵、框線，`#RRGGBB` 色碼） |
 | 🎨 鍵盤大小 | 0.7×–1.4× 縮放，大螢幕小螢幕都好按 |
-| 🔂 輸出控制 | 數字／符號可切換全形輸出；空白鍵即時顯示注音提示 |
+| 🔂 輸出控制 | 數字／符號可切換全形輸出；打出字後**空間鍵顯示該字的蝦米字根**（邊打邊學會拆碼） |
 | 📦 資料管理 | 清除自學記錄、設定**匯出／匯入**（JSON） |
-| 🔌 回饋 | 按鍵震動／音效可獨立開關（抖音愛好者有福了） |
+| 🔌 回饋 | 按鍵震動／音效可獨立開關（抖音愛好者有福了）；倒退鍵位置可選（右上／頂排） |
 
 ---
 
@@ -43,10 +53,15 @@
    - `Enter` 將目前組合提交為**英文**（保留大小寫與混合字）
    - `Space` 若為合法字碼 → 出字；否則顯示錯誤提示
    - 嘸蝦米碼維持小寫（含 `, . ' [ ]`）
+   - `⇧` 單按＝一時英文大寫（按鍵轉藍）；**雙擊＝鎖定大寫 CapsLock**（按鍵轉綠）；長按＝直接送出該英文字元
 
 2. **注音**
-   - 依實際字頻排序候選，常用字優先
-   - 簡化字自動降權，避免「正政證…」被簡體字「证」插隊
+   - 依實際字頻排序候選，常用字優先；簡化字自動降權
+   - **連打組詞**：連續輸入兩個音節自動組詞，ㄨㄢㄕㄤ（可不打聲調）→ 候選列直接出現「晚上」
+   - **自動補聲調**：ㄨㄢ 自動帶 ㄨㄢˇ、ㄕㄤ 帶 ㄕㄤˋ，依字頻＋後接詞關聯找最佳組合
+   - **完整音節後可續打**：ㄨㄢˇ ㄕㄤˋ（含聲調）也能繼續連打，不必重開
+   - `Space`＝直接送出候選列第一項（詞或字）；真的無此字才顯示「查無此字」並清空
+   - 打出的雙字詞會**記入個人關聯**，日後排序更貼近你的用語
 
 3. **T9 預測**
    - 五列大按鍵佈局（`1 2 3 / 4 5 6 / 7 8 9 / , 0 .`）
@@ -54,9 +69,9 @@
    - `Space` = 送出暫存後輸出空白；`Enter` = 換行／送出數字
 
 4. **QWERTY 英文**
-   - 直接輸出字母，保留大小寫（含 Shift 一次性切換）
+   - 直接輸出字母，保留大小寫（含 Shift 一次性切換與 CapsLock 鎖定）
 
-> 模式切換：空白鍵列左側「蝦／注／T9」一鍵循環；`#+=`、`😊` 開符號與表情面板。
+> 模式切換：QWERTY 列左側 **`mode`** 鍵 以「T9 → QWERTY → 注音 → T9」循環（鍵上直接顯示目前模式名）；`#+=` 開符號面板、`😊` 開表情面板；QWERTY 頁另有 **`ABC`** 直切英文、**`✕`** 回上一面板。
 
 ---
 
@@ -96,7 +111,7 @@ apksigner sign --ks boshiamy-release.keystore --ks-key-alias boshiamy \
         --out app-release-signed.apk app/build/outputs/apk/release/app-release.apk
 ```
 
-已簽署的正式包目前在 `dist/boshiamy-1.0.0-release.apk`（v1.0.0 / versionCode 1）。
+已簽署的正式包：**每版發布於 GitHub Releases**（`https://github.com/Solo-man-IGG/IgG-BoshiamyIME/releases`），亦可於 `dist/` 找到歷版（`dist/` 不進 git）。
 
 ---
 
@@ -123,7 +138,7 @@ app/src/main/
 │   ├── engine/  InputEngineManager / Lookup / Zhuyin / T9
 │   ├── data/    DictionaryManager / DictionaryDownloader
 │   ├── theme/   ThemePalette                    # 主題解析（深色／自訂）
-│   ├── ui/      KeyboardView / CandidateBarView / KeyboardPreviewView
+│   ├── ui/      KeyboardView / CandidateBarView / KeyboardPreviewView / ColorPaletteView
 │   ├── model/   Candidate / DictionaryEntry / Enums
 │   └── SettingsActivity.kt          # 設定頁（主題／鍵盤／資料管理）
 └── res/         layouts / drawables / xml(method)
@@ -155,16 +170,28 @@ app/src/main/
 
 ---
 
+## 更新紀錄
+
+- **v1.0.18**：注音**連打組詞**（ㄨㄢㄕㄤ→晚上、自動補聲調、可續打第二音節）；`Space`＝直接送出候選第一項；打出字後**空間鍵顯示蝦米字根**；雙字詞會自動學習
+- **v1.0.17**：`Enter` 改回純英文輸入鍵（不檢查、不清空）；「查無此字＋清空」只發生在空白鍵
+- **v1.0.16**：`Enter`＝有效碼才送出英文；查無此字時**真正清空**輸入區字根
+- **v1.0.15**：修「查無此字」不清空的真正根因（`finishComposingText` 只去底線不刪字）
+- **v1.0.13~14**：空白鍵不再誤送拆碼；輸入錯誤＝「查無此字」＋清空
+- **v1.0.10~12**：候選列不再收起；Shift 雙擊鎖定大寫（綠）/單按英文（藍）；斜線 `/` 移入第五列；佈景改調色盤自訂
+- **v1.0.6~9**：注音補音節、倒退鍵位置選項、長按 ⌫ 連續刪除、鍵盤音效優化、數字列補 `/`
+
 ## 現況與待辦
 
 - [x] 標準嘸蝦米字碼表（內建）
 - [x] 注音字典（字頻排序、簡化字降權）
+- [x] 注音連打組詞（雙音節、自動補調、個人化學習）
 - [x] T9 五列大按鍵佈局
 - [x] 聯想詞（靜態 + 動態學習）
-- [x] 正式 release 簽署（`dist/boshiamy-1.0.0-release.apk`）
+- [x] 空間鍵顯示該字蝦米字根
+- [x] 正式 release 簽署（每版發布 GitHub Releases）
 - [x] 設定頁（主題／鍵盤大小／全形／震動音效／資料管理）
 - [ ] 上架 Google Play ／其他商店
-- [ ] 補充實機截圖進 README
+- [ ] 細節修整：Word 網址自動英文、設定 UI 視覺美化
 
 > 關於「簡速／倚天」字碼表：早期規劃曾包含，產品決策後已從輸入模式中移除；如社群有需求可再評估。
 
