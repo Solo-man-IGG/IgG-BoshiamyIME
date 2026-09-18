@@ -17,6 +17,8 @@
 4. 開 Merge Request，等待維護者審查（可能要求補可重現建置、修正 metadata）
 5. 通過後 F-Droid 伺服器會對每個新 tag 自動 build 並發佈（`AutoUpdateMode: Version` 已設）
 
+> ✅ **（2026-09-18）已送出 MR #49249**：https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49249（狀態：opened，等待維護者審查）。fork：`Solo-man-IGG/fdroiddata` 分支 `add-boshiamyime`。
+
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
 

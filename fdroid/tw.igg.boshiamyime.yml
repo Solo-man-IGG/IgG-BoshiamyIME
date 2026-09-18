@@ -2,7 +2,7 @@
 # 提交至 F-Droid 官方庫（fdroiddata）時以此檔為準，
 # 檔名固定為 <applicationId>.yml。
 Categories:
-  - Input
+  - Writing
 License: GPL-3.0-or-later
 AuthorName: IgG Digital Technology
 WebSite: https://www.igg.tw/
