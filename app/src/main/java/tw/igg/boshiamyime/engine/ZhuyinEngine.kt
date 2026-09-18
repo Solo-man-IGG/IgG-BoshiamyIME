@@ -179,5 +179,9 @@ class ZhuyinEngine(private val context: Context) {
             .map { Candidate(code = keys, char = it.key, frequency = it.value) }
     }
 
+    fun lookupBopomofoByChar(char: String): String {
+        return charBopomofo[char]?.sorted()?.joinToString("、") ?: ""
+    }
+
     fun isLoaded(): Boolean = loaded
 }

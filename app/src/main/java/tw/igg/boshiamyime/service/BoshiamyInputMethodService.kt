@@ -632,8 +632,12 @@ class BoshiamyInputMethodService : InputMethodService(),
         zhuyinInput = ""
         zhuyinComplete = false
 
-        val bizCode = dictionaryManager.lookupByChar(firstChar)?.code.orEmpty()
-        keyboardView.setSpaceHint(bizCode)
+        val hint = if (engineManager.keyboardMode == KeyboardMode.ZHUYIN) {
+            dictionaryManager.lookupByChar(firstChar)?.code.orEmpty()
+        } else {
+            zhuyinEngine.lookupBopomofoByChar(firstChar)
+        }
+        keyboardView.setSpaceHint(hint)
 
         if (candidate.char.length == 1) {
             val associations = lookupEngine.lookupAssociations(firstChar)
