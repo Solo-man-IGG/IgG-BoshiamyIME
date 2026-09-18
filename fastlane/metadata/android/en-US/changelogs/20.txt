@@ -1,0 +1,11 @@
+v1.0.19 (versionCode 20) — First F-Droid release
+• Space-bar complementary hint now shows the *other* IME code (Boshiamy ↔ Zhuyin), for mutual learning
+• Zhuyin phrase input (e.g. u61 v73 → "good evening"), auto tone completion, space to commit
+• Full custom colour palette (HSV hue × brightness + greyscale)
+• Backspace key position: bottom row (Enter mode) or top bar
+• Sound now uses SoundPool (audible regardless of system touch-sound setting)
+• Vibration strength slider (0–100)
+• Auto-update checker via GitHub Releases
+• Fixed navigation-bar overlap on edge-to-edge devices (Android 15)
+• Shift: single-tap = blue (temporary uppercase), double-tap = green (caps lock)
+• Many more improvements from beta feedback (see GitHub Releases for full history)

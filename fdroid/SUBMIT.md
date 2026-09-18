@@ -19,7 +19,12 @@
 
 > ✅ **（2026-09-18）已送出 MR #49249**：https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49249（狀態：opened，等待維護者審查）。fork：`Solo-man-IGG/fdroiddata` 分支 `add-boshiamyime`。
 >
-> ✅ **（2026-09-18）審查第 1 輪已回覆**：依 linsui 要求改用 App Inclusion 模板、commit 完整 hash、修 pipeline 3 錯誤（foojay-resolver／scandelete／Binaries 缺 AllowedAPKSigningKeys）。fork 分支 `cd8f8b8f`、app 源碼 `8c1c5f0`（GitHub master `5416802`）。**待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
+> ✅ **（2026-09-18）審查迭代記錄**：
+> - 第 1 輪：linsui 要求 App Inclusion 模板、commit 完整 hash、修 pipeline。
+> - ⚠️ 我們以平行 commit 蓋掉維護者重寫的 metadata（`766d1ea6`）→ linsui 回「You reverted all my changes」。
+> - **修正**：fork 分支重整到 `766d1ea6`（保留 RepoType/Builds/Categories Keyboard & IME/License GPL-3.0-only/AutoName）之上，另疊修復 commit `1e63ecc1`（commit 改完整 hash `8c1c5f0e…`、移除 Binaries/scandelete——`Build:` 單數是無效欄位，schema/lint/build 全擋）。
+> - Summary/Description 依指示遷到 app repo `fastlane/metadata/android/`（zh-TW＋en-US＋截圖＋changelog），fdroiddata 只留 build metadata。
+> - **待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：

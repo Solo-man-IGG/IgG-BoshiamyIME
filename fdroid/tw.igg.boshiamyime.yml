@@ -1,35 +1,30 @@
 # fdroid metadata for 璦閣輸入法 (BoshiamyIME)
 # 提交至 F-Droid 官方庫（fdroiddata）時以此檔為準，
 # 檔名固定為 <applicationId>.yml。
+# 注意：Summary/Description 不放這裡——依維護者指示改放
+# fastlane/metadata/android/（F-Droid 會自動拉取）。
 Categories:
-  - Writing
-License: GPL-3.0-or-later
+  - Keyboard & IME
+License: GPL-3.0-only
 AuthorName: IgG Digital Technology
 WebSite: https://www.igg.tw/
 SourceCode: https://github.com/Solo-man-IGG/IgG-BoshiamyIME
 IssueTracker: https://github.com/Solo-man-IGG/IgG-BoshiamyIME/issues
 Changelog: https://github.com/Solo-man-IGG/IgG-BoshiamyIME/releases
 Donate: https://www.igg.tw/
-Name: 璦閣輸入法 (BoshiamyIME)
+
 AutoName: 璦閣輸入法
-Summary: 完全離線的開放原始碼嘸蝦米輸入法
-Description: |
-  BoshiamyIME（璦閣輸入法）是 100% 離線、純 Kotlin 的 Android 嘸蝦米輸入法，
-  你的字根與輸入內容絕不會離開手機（無廣告、無追蹤、無資料收集 SDK）。
 
-  * 標準嘸蝦米 / 注音（連打組詞：ㄨㄢㄕㄤ → 晚上、自動補聲調）/ T9 預測 / QWERTY 英文
-  * 輸入時自動學習個人用語與後接詞；空間鍵互補提示另一種輸入法碼（蝦米↔注音）
-  * 設定：主題調色盤自訂、鍵盤大小縮放、全形數字／符號、倒退鍵位置、震動與音效、資料匯出／匯入
-  * 完全開源（GPL-3.0），可自行審視程式碼
-
-  碼表來源：chinese-opendesktop/cin-tables（授權以原始來源為準，詳見 NOTICE）。
+RepoType: git
 Repo: https://github.com/Solo-man-IGG/IgG-BoshiamyIME
-Build:
+
+Builds:
   - versionName: 1.0.19
     versionCode: 20
     commit: 8c1c5f0e701f9311bb4c81fb5ca6cd23243a95be
     gradle:
       - yes
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 CurrentVersion: 1.0.19

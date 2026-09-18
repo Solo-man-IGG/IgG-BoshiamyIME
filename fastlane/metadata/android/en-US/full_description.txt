@@ -1,0 +1,10 @@
+BoshiamyIME is a 100% offline, pure-Kotlin Android input method for Boshiamy (嘸蝦米) users. Your keystrokes and input data never leave your phone (no ads, no trackers, no data-collection SDKs).
+
+Features:
+• Standard Boshiamy / Zhuyin with phrase prediction (u61 v73 = "good evening", auto tone completion) / T9 predictive / QWERTY English
+• Learns personal phrases and next-character suggestions on-device
+• Complementary space-bar hint shows the other IME code (Boshiamy ↔ Zhuyin)
+• Settings: custom colour palette, keyboard scaling, full-width digits/symbols, backspace key placement, vibration & sound, data export/import
+• Fully open source (GPL-3.0) — inspect the code yourself
+
+Code table source: chinese-opendesktop/cin-tables (see NOTICE for license details).
