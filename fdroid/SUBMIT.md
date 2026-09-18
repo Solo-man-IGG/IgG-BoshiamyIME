@@ -18,6 +18,8 @@
 5. 通過後 F-Droid 伺服器會對每個新 tag 自動 build 並發佈（`AutoUpdateMode: Version` 已設）
 
 > ✅ **（2026-09-18）已送出 MR #49249**：https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49249（狀態：opened，等待維護者審查）。fork：`Solo-man-IGG/fdroiddata` 分支 `add-boshiamyime`。
+>
+> ✅ **（2026-09-18）審查第 1 輪已回覆**：依 linsui 要求改用 App Inclusion 模板、commit 完整 hash、修 pipeline 3 錯誤（foojay-resolver／scandelete／Binaries 缺 AllowedAPKSigningKeys）。fork 分支 `cd8f8b8f`、app 源碼 `8c1c5f0`（GitHub master `5416802`）。**待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
