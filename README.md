@@ -192,6 +192,7 @@ app/src/main/
 - [x] 正式 release 簽署（每版發布 GitHub Releases）
 - [x] 設定頁（主題／鍵盤大小／全形／震動音效／資料管理）
 - [ ] 上架 Google Play ／其他商店
+- [ ] F-Droid 上架（metadata 已備於 `fdroid/`，申請中）
 - [ ] 細節修整：Word 網址自動英文、設定 UI 視覺美化
 
 > 關於「簡速／倚天」字碼表：早期規劃曾包含，產品決策後已從輸入模式中移除；如社群有需求可再評估。
