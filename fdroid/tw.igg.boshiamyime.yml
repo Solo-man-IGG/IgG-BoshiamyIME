@@ -3,6 +3,7 @@
 # 檔名固定為 <applicationId>.yml。
 # 注意：Summary/Description 不放這裡——依維護者指示改放
 # fastlane/metadata/android/（F-Droid 會自動拉取）。
+# 本檔為 fork MR 上 metadata 的鏡像（2026-09-19 MR head 760f3c29）。
 Categories:
   - Keyboard & IME
 License: GPL-3.0-only
@@ -18,17 +19,18 @@ AutoName: 璦閣輸入法
 RepoType: git
 Repo: https://github.com/Solo-man-IGG/IgG-BoshiamyIME
 
+Binaries:
+  https://github.com/Solo-man-IGG/IgG-BoshiamyIME/releases/download/v%v/boshiamy-%v-release.apk
+
 Builds:
   - versionName: 1.0.19
     versionCode: 20
-    commit: 3f9de3146362ecc0fc1697e380e273b713ddca61
+    commit: dba412e8e69019d6510ceca31333abcaaeab8a3a
     subdir: app
     gradle:
       - yes
 
-Binaries: https://github.com/Solo-man-IGG/IgG-BoshiamyIME/releases/download/v%v/boshiamy-%v-release.apk
-AllowedAPKSigningKeys:
-  - b50efdf68b60084d8ee32634b9913833ca916b33ea875f000975bc201ede65ee
+AllowedAPKSigningKeys: b50efdf68b60084d8ee32634b9913833ca916b33ea875f000975bc201ede65ee
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags

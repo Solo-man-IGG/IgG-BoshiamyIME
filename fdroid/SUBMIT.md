@@ -27,6 +27,8 @@
 > - **待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
 > - ✅ 第 3 輪：linsui 疊 `subdir: app`（`afceaf32`）→ parent pipeline `2861611009` 全綠 9/9，MR 等最終 merge。
 > - ✅ 第 4 輪完成（2026-09-19）：commit pin→`3f9de31`；兩次 clean build 未簽名 APK 逐位元相同、v2/v3-only 簽名亦逐位元相同；`dist/boshiamy-1.0.19-release.apk`（可重現版，md5 `3ad6061c…`）已替換 GitHub Release 資產；fork MR metadata `c83ea93`；已回覆 linsui 請求重觸發 CI（note `3867888574`）。
+> - 🔄 第 5 輪（2026-09-19）：linsui 重觸發 CI 後 2 job 失敗——「fdroid build」比對僅差 `META-INF/version-control-info.textproto`（F-Droid server 無 git → `NO_SUPPORTED_VCS_FOUND`，本機 build 嵌入 revision）＋「fdroid rewritemeta」格式（Binaries 搬到 Builds 前、AllowedAPKSigningKeys 改單列）。
+> - ✅ 第 5 輪完成：release 加 `vcsInfo.include = false`（AGP 8.3+ 預設嵌 VCS 資訊，F-Droid 文件建議停用）；重建兩次逐位元相同（APK 內已無 version-control-info）、v2/v3-only 簽名驗證指紋 `b50efdf6…`；`dist/boshiamy-1.0.19-release.apk`（md5 `413b4f5b…`）換資產；fork metadata 改 canonical（commit→`dba412e`，MR head `760f3c29`）；再次回覆 linsui。
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
