@@ -25,6 +25,8 @@
 > - **修正**：fork 分支重整到 `766d1ea6`（保留 RepoType/Builds/Categories Keyboard & IME/License GPL-3.0-only/AutoName）之上，另疊修復 commit `1e63ecc1`（commit 改完整 hash `8c1c5f0e…`、移除 Binaries/scandelete——`Build:` 單數是無效欄位，schema/lint/build 全擋）。
 > - Summary/Description 依指示遷到 app repo `fastlane/metadata/android/`（zh-TW＋en-US＋截圖＋changelog），fdroiddata 只留 build metadata。
 > - **待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
+> - ✅ 第 3 輪：linsui 疊 `subdir: app`（`afceaf32`）→ parent pipeline `2861611009` 全綠 9/9，MR 等最終 merge。
+> - 🔄 第 4 輪（2026-09-19）：linsui 要求(9/18 14:22)①pin commit 前進至含 fastlane；②加 `Binaries`＋`AllowedAPKSigningKeys`（**可重現建置**）；③簽章金鑰按例備份。→ 本機處理中：release 移除 debug 簽名（產未簽名 APK）、發佈簽名改 v2/v3-only、metadata bump commit＋加 Binaries/AllowedAPKSigningKeys。
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
