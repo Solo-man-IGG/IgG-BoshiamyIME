@@ -26,7 +26,7 @@
 > - Summary/Description 依指示遷到 app repo `fastlane/metadata/android/`（zh-TW＋en-US＋截圖＋changelog），fdroiddata 只留 build metadata。
 > - **待維護者重觸發 CI 驗證**（fork 無 SaaS runner，無法自跑）。
 > - ✅ 第 3 輪：linsui 疊 `subdir: app`（`afceaf32`）→ parent pipeline `2861611009` 全綠 9/9，MR 等最終 merge。
-> - 🔄 第 4 輪（2026-09-19）：linsui 要求(9/18 14:22)①pin commit 前進至含 fastlane；②加 `Binaries`＋`AllowedAPKSigningKeys`（**可重現建置**）；③簽章金鑰按例備份。→ 本機處理中：release 移除 debug 簽名（產未簽名 APK）、發佈簽名改 v2/v3-only、metadata bump commit＋加 Binaries/AllowedAPKSigningKeys。
+> - ✅ 第 4 輪完成（2026-09-19）：commit pin→`3f9de31`；兩次 clean build 未簽名 APK 逐位元相同、v2/v3-only 簽名亦逐位元相同；`dist/boshiamy-1.0.19-release.apk`（可重現版，md5 `3ad6061c…`）已替換 GitHub Release 資產；fork MR metadata `c83ea93`；已回覆 linsui 請求重觸發 CI（note `3867888574`）。
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
