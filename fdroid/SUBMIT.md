@@ -32,6 +32,7 @@
 > - 🔄 第 6 輪（2026-09-19）：c1a38592（7ecf0f62 被重放到新 master）剩 `fdroid rewritemeta` 1 job 失敗——唯一差異為 `Repo:` 與 `Binaries:` 之間多一個空列（rewritemeta 要無空列 + 續行尾空格 + EOF newline）。
 > - ✅ 第 6 輪完成：以 GitLab API 直接把修正後 canonical 檔寫回 fork 分支（免 fetch 整個 fdroiddata 大庫），新 commit `9ddd15b8`（疊在 c1a38592 上），MR head、本地 mirror 均已對齊且 body 逐位元匹配；已留言請 linsui 重觸發 CI（note `3870654587`）。
 > - ✅ 第 7 輪（2026-09-20）：linsui 先重跑 9ddd15b8（fail，fork pipeline 已被清掉→404），接著把分支 rebase 到最新 master（system note `3871109824`，疊 `60e114ae` 等 7 個 master commit），新 head `58ad3fea`；parent pipeline `2864999556` **9/9 全綠**（含 fdroid rewritemeta、fdroid build、check apk）。MR 狀態：opened，merge_status `can_be_merged`（detailed=`mergeable`）。**只差 linsui 按下 merge。**
+> - ✅ 例行查核（2026-09-22）：MR head 仍 `58ad3fea`，前端 pipeline 仍全綠；master 已前進至 `47464654`（09-21/22 提交：Vault Explorer、Tuta、Kryptos、InstaDownload、Rethink、apatch、Libre Contacts 等），**均未異動 `metadata/tw.igg.boshiamyime.yml`**，merge_status 顯示 `unchecked`（GitLab 重算中）且無衝突風險；linsui 無新意見。**仍待 merge。**
 
 ## 路線 B：自架第三方 repo（立即可用，與 A 並行）
 本機已具備 Android SDK（build-tools 35.0.0）。流程：
