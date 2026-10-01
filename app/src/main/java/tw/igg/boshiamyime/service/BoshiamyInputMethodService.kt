@@ -552,10 +552,15 @@ class BoshiamyInputMethodService : InputMethodService(),
             if (exact.isNotEmpty()) {
                 commitCandidate(exact.first())
                 return true
-            } else {
-                showInputError()
-                return false
             }
+            // 碼還沒打完（候選列是用前綴比對出來的）時，按空白要送出畫面上看到的第一位
+            val visible = engineManager.getCandidates()
+            if (visible.isNotEmpty()) {
+                commitCandidate(visible.first())
+                return true
+            }
+            showInputError()
+            return false
         } else {
             val candidates = engineManager.getCandidates()
             if (candidates.isNotEmpty()) {
