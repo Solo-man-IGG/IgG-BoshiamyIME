@@ -52,6 +52,12 @@ CODE_PATTERN = re.compile(r"^[a-z,.'\[\]]+$")
 # 假名插進去會被常用字擠到第 10 碼以後，等於打不出來。
 # 萬國蝦米的假名一律帶 j 前綴與逗號（ja, / jka, / jn,）本就是為了避開這類撞碼。
 KANA_PATCH = [("jno,", "の")]
+
+# 同一 repo 的 boshiamy.cin（劉重次原廠嘸蝦米）獨有的字，主要是 № ⅰ ① 々 ゞ
+# ヂ ヴ 等萬國蝦米未收錄的符號與符號用字（日文也會用到 々 〆 ヂ ヅ ヴ）。
+# 兩表的漢字覆蓋幾乎重疊（原廠僅少 7,834 個漢字卻多 42 字），故直接併入，
+# 讓使用者不必在兩份碼表之間切換。
+SUPPLEMENT_CIN = ("boshiamy.cin",)
 T9_MAP = {
     **dict.fromkeys("abc", "2"),
     **dict.fromkeys("def", "3"),
@@ -125,6 +131,26 @@ def parse_cin(path):
         if not any(c == char for _co, c in entries):
             entries.append((code, char))
     # Python 的排序是穩定的，同碼的字維持 .cin 內的原始順序作為最終排序依據
+    entries.sort(key=lambda e: e[0])
+    return entries
+
+
+def merge_supplements(entries):
+    """把 boshiamy.cin 獨有的字併進來（萬國蝦米未收錄的符號、々 〆 ヂ ヴ 等）。"""
+    existing = {char for _code, char in entries}
+    added = []
+    for name in SUPPLEMENT_CIN:
+        path = os.path.join(CACHE, name)
+        if not os.path.exists(path):
+            raise SystemExit(f"找不到 {path}，請先下載 {name} 到 tools/.cache/")
+        for code, char in parse_cin(path):
+            if char in existing:
+                continue
+            existing.add(char)
+            added.append((code, char))
+    entries.extend(added)
+    entries.sort(key=lambda e: e[0])
+    return added
     entries.sort(key=lambda e: e[0])
     return entries
 
@@ -295,6 +321,12 @@ def main():
 
     pairs = parse_cin(cin)
     print(f"讀入 {os.path.basename(cin)}：{len(pairs):,} 筆")
+
+    supplemented = merge_supplements(pairs)
+    print(
+        f"併入 {'+'.join(SUPPLEMENT_CIN)} 獨有字：{len(supplemented):,} 筆"
+        f"（{''.join(sorted(c for _co, c in supplemented))}）"
+    )
     print(f"字頻表 {len(counts):,} 字、簡體字集 {len(simplified):,} 字")
 
     out_entries = []

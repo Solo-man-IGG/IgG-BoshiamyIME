@@ -66,6 +66,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvDictVersion: TextView
     private lateinit var tvDictCount: TextView
     private lateinit var btnUpdate: Button
+    private lateinit var btnUseBundledDict: Button
+    private lateinit var tvDictSource: TextView
     private lateinit var progressUpdate: ProgressBar
     private lateinit var tvUpdateStatus: TextView
 
@@ -107,8 +109,12 @@ class SettingsActivity : AppCompatActivity() {
         tvDictVersion = findViewById(R.id.tv_dict_version)
         tvDictCount = findViewById(R.id.tv_dict_count)
         btnUpdate = findViewById(R.id.btn_update_dict)
+        btnUseBundledDict = findViewById(R.id.btn_use_bundled_dict)
+        tvDictSource = findViewById(R.id.tv_dict_source)
         progressUpdate = findViewById(R.id.progress_update)
         tvUpdateStatus = findViewById(R.id.tv_update_status)
+
+        btnUseBundledDict.setOnClickListener { switchToBundledDictionary() }
 
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
@@ -426,6 +432,33 @@ class SettingsActivity : AppCompatActivity() {
         val count = downloader.getLocalEntryCount()
         tvDictVersion.text = "目前版本：$version"
         tvDictCount.text = "碼表筆數：$count"
+
+        val downloaded = downloader.hasDownloadedDictionary()
+        btnUseBundledDict.visibility = if (downloaded) View.VISIBLE else View.GONE
+        tvDictSource.visibility = if (downloaded) View.VISIBLE else View.GONE
+        if (downloaded) {
+            val src = downloader.getDownloadedSourceFile()
+            tvDictSource.text = if (src.isNotEmpty()) {
+                "目前使用「從 GitHub 下載」的碼表（$src），會覆蓋 App 內建版本。" +
+                    "若要使用內建碼表（含日文「の」與字頻排序），請按下方按鈕切換。"
+            } else {
+                "目前使用「從 GitHub 下載」的碼表，會覆蓋 App 內建版本。" +
+                    "若要使用內建碼表（含日文「の」與字頻排序），請按下方按鈕切換。"
+            }
+        }
+    }
+
+    private fun switchToBundledDictionary() {
+        if (downloader.switchToBundledDictionary()) {
+            Toast.makeText(
+                this,
+                "已切換為 App 內建碼表，重新啟動鍵盤後生效",
+                Toast.LENGTH_LONG
+            ).show()
+            updateDictInfo()
+        } else {
+            Toast.makeText(this, "切換失敗，請稍後再試", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun startDownload() {

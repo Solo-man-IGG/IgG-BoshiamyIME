@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import tw.igg.boshiamyime.model.DictionaryEntry
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,6 +21,7 @@ class DictionaryDownloader(private val context: Context) {
         private const val PREFS_NAME = "boshiamy_dict"
         private const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
+        private const val KEY_SOURCE_FILE = "dict_source_file"
     }
 
     interface DownloadCallback {
@@ -63,6 +65,7 @@ class DictionaryDownloader(private val context: Context) {
             prefs.edit {
                 putString(KEY_VERSION, version)
                 putInt(KEY_ENTRY_COUNT, entries.size)
+                putString(KEY_SOURCE_FILE, "uniliu.cin")
             }
 
             callback.onSuccess(entries.size, version)
@@ -157,4 +160,35 @@ class DictionaryDownloader(private val context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getInt(KEY_ENTRY_COUNT, 0)
     }
+
+    /**
+     * 下載的字典會覆蓋內建版（DictionaryManager 優先讀 filesDir/dictionary.json），
+     * 但下載來源 uniliu.cin 本身缺「の」等字，且沒有字頻。
+     * 使用者可在此清除下載版，改用 App 內建的字典。
+     */
+    fun hasDownloadedDictionary(): Boolean = localDictionaryFile().exists()
+
+    fun getDownloadedSourceFile(): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_SOURCE_FILE, "") ?: ""
+    }
+
+    fun switchToBundledDictionary(): Boolean {
+        return try {
+            val file = localDictionaryFile()
+            val removed = if (file.exists()) file.delete() else true
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_VERSION)
+                .remove(KEY_ENTRY_COUNT)
+                .remove(KEY_SOURCE_FILE)
+                .apply()
+            removed
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to switch to bundled dictionary: ${e.message}")
+            false
+        }
+    }
+
+    private fun localDictionaryFile() = File(context.filesDir, "dictionary.json")
 }

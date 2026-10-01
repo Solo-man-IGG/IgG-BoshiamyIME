@@ -356,6 +356,23 @@
             android:textSize="14sp"
             android:layout_marginBottom="8dp" />
 
+        <Button
+            android:id="@+id/btn_use_bundled_dict"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="改用 App 內建碼表"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_dict_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#5F6368"
+            android:layout_marginBottom="8dp" />
+
         <ProgressBar
             android:id="@+id/progress_update"
             style="?android:attr/progressBarStyleHorizontal"
