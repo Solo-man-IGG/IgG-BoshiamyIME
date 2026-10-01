@@ -32,13 +32,15 @@ class DictionaryManager(private val context: Context) {
     fun loadDictionary(tableName: String = "standard") {
         try {
             val localFile = File(context.filesDir, "dictionary.json")
-            val json = if (localFile.exists()) {
-                Log.i(TAG, "Loading from local storage")
-                localFile.readText(Charsets.UTF_8)
-            } else {
-                Log.i(TAG, "Loading from assets: $ASSETS_DIR/$tableName/dictionary.json")
-                loadAssetJson("$ASSETS_DIR/$tableName/dictionary.json")
+            if (!localFile.exists()) {
+                // 碼表已改為首次使用時下載，APK 內不再附帶
+                isLoaded = false
+                loadAssociations("$ASSETS_DIR/$tableName/associations.json")
+                Log.i(TAG, "No dictionary yet, user needs to download it first")
+                return
             }
+            Log.i(TAG, "Loading from local storage")
+            val json = localFile.readText(Charsets.UTF_8)
             parseDictionary(json)
             loadAssociations("$ASSETS_DIR/$tableName/associations.json")
             isLoaded = true
@@ -128,6 +130,11 @@ class DictionaryManager(private val context: Context) {
                 return reader.readText()
             }
         }
+    }
+
+    /** App 是否已有可用碼表（首次使用需先在設定中下載）。 */
+    fun hasDictionary(): Boolean {
+        return File(context.filesDir, "dictionary.json").exists()
     }
 
     private fun parseDictionary(json: String) {

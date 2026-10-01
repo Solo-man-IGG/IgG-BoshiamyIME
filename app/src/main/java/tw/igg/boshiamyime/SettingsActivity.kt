@@ -66,7 +66,6 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvDictVersion: TextView
     private lateinit var tvDictCount: TextView
     private lateinit var btnUpdate: Button
-    private lateinit var btnUseBundledDict: Button
     private lateinit var tvDictSource: TextView
     private lateinit var progressUpdate: ProgressBar
     private lateinit var tvUpdateStatus: TextView
@@ -109,12 +108,10 @@ class SettingsActivity : AppCompatActivity() {
         tvDictVersion = findViewById(R.id.tv_dict_version)
         tvDictCount = findViewById(R.id.tv_dict_count)
         btnUpdate = findViewById(R.id.btn_update_dict)
-        btnUseBundledDict = findViewById(R.id.btn_use_bundled_dict)
         tvDictSource = findViewById(R.id.tv_dict_source)
         progressUpdate = findViewById(R.id.progress_update)
         tvUpdateStatus = findViewById(R.id.tv_update_status)
 
-        btnUseBundledDict.setOnClickListener { switchToBundledDictionary() }
 
         setupInputModeSpinner()
         setupKeyboardScaleSpinner()
@@ -428,36 +425,36 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun updateDictInfo() {
+        val downloaded = downloader.hasDownloadedDictionary()
+        if (!downloaded) {
+            tvDictVersion.text = "尚未下載碼表"
+            tvDictCount.text = "碼表筆數：--"
+            btnUpdate.text = "下載碼表（首次使用需下載）"
+            tvDictSource.visibility = View.VISIBLE
+            tvDictSource.text =
+                "碼表（萬國蝦米 + 原廠嘸蝦米，約 97,000 字）不隨 App 內建，" +
+                    "需從 GitHub 下載後才能使用。下載需約 1.1 MB，請確認可連網。" +
+                    "兩份碼表會自動合併，缺字（例：日文「の」、符號 № ①、々 〆 ヂ ヅ ヴ）已互補。"
+            return
+        }
+
         val version = downloader.getLocalVersion()
         val count = downloader.getLocalEntryCount()
         tvDictVersion.text = "目前版本：$version"
         tvDictCount.text = "碼表筆數：$count"
-
-        val downloaded = downloader.hasDownloadedDictionary()
-        btnUseBundledDict.visibility = if (downloaded) View.VISIBLE else View.GONE
-        tvDictSource.visibility = if (downloaded) View.VISIBLE else View.GONE
-        if (downloaded) {
-            val src = downloader.getDownloadedSourceFile()
-            tvDictSource.text = if (src.isNotEmpty()) {
-                "目前使用「從 GitHub 下載」的碼表（$src），會覆蓋 App 內建版本。" +
-                    "若要使用內建碼表（含日文「の」與字頻排序），請按下方按鈕切換。"
-            } else {
-                "目前使用「從 GitHub 下載」的碼表，會覆蓋 App 內建版本。" +
-                    "若要使用內建碼表（含日文「の」與字頻排序），請按下方按鈕切換。"
-            }
-        }
-    }
-
-    private fun switchToBundledDictionary() {
-        if (downloader.switchToBundledDictionary()) {
-            Toast.makeText(
-                this,
-                "已切換為 App 內建碼表，重新啟動鍵盤後生效",
-                Toast.LENGTH_LONG
-            ).show()
-            updateDictInfo()
+        btnUpdate.text = "重新下載碼表"
+        tvDictSource.visibility = View.VISIBLE
+        val src = downloader.getDownloadedSourceFile()
+        tvDictSource.text = if (src.isNotEmpty()) {
+            "來源：$src（已合併）\n" +
+                "授權：CC0-1.0｜github.com/chinese-opendesktop/cin-tables\n" +
+                "· uniliu.cin 萬國蝦米\n" +
+                "· boshiamy.cin 嘸蝦米（劉重次）\n" +
+                "兩份自動合併，缺字互補\n\n" +
+                "注音碼表：samejack/sc-dictionary\n" +
+                "OpenCC 資料：OpenCC 專案"
         } else {
-            Toast.makeText(this, "切換失敗，請稍後再試", Toast.LENGTH_SHORT).show()
+            "來源：已下載的碼表"
         }
     }
 

@@ -219,6 +219,10 @@ class BoshiamyInputMethodService : InputMethodService(),
         lastShiftTime = 0L
         keyboardView.setShiftState(false, false)
         applyNavBarPadding()
+
+        if (!dictionaryManager.hasDictionary()) {
+            candidateBar.showError("請先到設定下載碼表")
+        }
     }
 
     private fun applyDeleteKeyLocation() {

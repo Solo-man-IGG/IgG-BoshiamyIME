@@ -17,7 +17,10 @@ class DictionaryDownloader(private val context: Context) {
 
     companion object {
         private const val TAG = "DictionaryDownloader"
-        private const val CIN_URL = "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/uniliu.cin"
+        private const val CIN_BASE_URL =
+            "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/"
+        private const val CIN_PRIMARY = "uniliu.cin"
+        private const val CIN_SUPPLEMENT = "boshiamy.cin"
         private const val PREFS_NAME = "boshiamy_dict"
         private const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
@@ -32,32 +35,20 @@ class DictionaryDownloader(private val context: Context) {
 
     suspend fun downloadDictionary(callback: DownloadCallback) = withContext(Dispatchers.IO) {
         try {
-            callback.onProgress(10)
+            callback.onProgress(5)
 
-            val url = URL(CIN_URL)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 15000
-            connection.readTimeout = 30000
-            connection.connect()
+            val primary = fetchCin(CIN_PRIMARY)
+                ?: return@withContext callback.onError("下載 $CIN_PRIMARY 失敗，請檢查網路")
+            callback.onProgress(40)
 
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                callback.onError("HTTP 錯誤：$responseCode")
-                return@withContext
-            }
+            val supplement = fetchCin(CIN_SUPPLEMENT)
+                ?: return@withContext callback.onError("下載 $CIN_SUPPLEMENT 失敗，請檢查網路")
+            callback.onProgress(65)
 
-            val inputStream = connection.inputStream
-            val reader = BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8))
-            val cinContent = reader.readText()
-            reader.close()
-            connection.disconnect()
+            val entries = mergeCins(primary, supplement)
+            callback.onProgress(85)
 
-            callback.onProgress(50)
-
-            val entries = parseCinFile(cinContent)
-            callback.onProgress(70)
-
-            val version = "1.0.0-${System.currentTimeMillis()}"
+            val version = "merged-${System.currentTimeMillis()}"
             saveDictionary(entries, version)
             callback.onProgress(100)
 
@@ -65,7 +56,7 @@ class DictionaryDownloader(private val context: Context) {
             prefs.edit {
                 putString(KEY_VERSION, version)
                 putInt(KEY_ENTRY_COUNT, entries.size)
-                putString(KEY_SOURCE_FILE, "uniliu.cin")
+                putString(KEY_SOURCE_FILE, "$CIN_PRIMARY + $CIN_SUPPLEMENT")
             }
 
             callback.onSuccess(entries.size, version)
@@ -74,6 +65,44 @@ class DictionaryDownloader(private val context: Context) {
             Log.e(TAG, "Download failed", e)
             callback.onError("下載失敗：${e.message}")
         }
+    }
+
+    private fun fetchCin(fileName: String): String? {
+        return try {
+            val connection = URL(CIN_BASE_URL + fileName).openConnection() as HttpURLConnection
+            connection.connectTimeout = 15000
+            connection.readTimeout = 30000
+            connection.connect()
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                Log.w(TAG, "HTTP ${connection.responseCode} for $fileName")
+                connection.disconnect()
+                return null
+            }
+            val content = connection.inputStream.use { input ->
+                BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
+            }
+            connection.disconnect()
+            content
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch $fileName", e)
+            null
+        }
+    }
+
+    /**
+     * 合併兩份碼表：以 uniliu.cin（萬國蝦米）為主，boshiamy.cin（原廠嘸蝦米）
+     * 只補前者沒有的字。兩表的漢字覆蓋幾乎重疊，差異是原廠多出 42 個字
+     * （№ ①② ⅰⅱ 羅馬數字，以及日文會用到的 々 〆 ゞ ヂ ヅ ヴ ヾ），
+     * 而萬國蝦米獨缺「の」。合併後兩邊的缺字都補齊。
+     */
+    private fun mergeCins(primary: String, supplement: String): List<DictionaryEntry> {
+        val main = parseCinFile(primary)
+        val existingChars = HashSet<String>(main.size * 2)
+        for (e in main) existingChars.add(e.char)
+
+        val extra = parseCinFile(supplement).filter { existingChars.add(it.char) }
+        Log.i(TAG, "mergeCins: ${main.size} + ${extra.size} = ${main.size + extra.size}")
+        return (main + extra).sortedBy { it.code }
     }
 
     private fun parseCinFile(cinContent: String): List<DictionaryEntry> {
@@ -171,23 +200,6 @@ class DictionaryDownloader(private val context: Context) {
     fun getDownloadedSourceFile(): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_SOURCE_FILE, "") ?: ""
-    }
-
-    fun switchToBundledDictionary(): Boolean {
-        return try {
-            val file = localDictionaryFile()
-            val removed = if (file.exists()) file.delete() else true
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .remove(KEY_VERSION)
-                .remove(KEY_ENTRY_COUNT)
-                .remove(KEY_SOURCE_FILE)
-                .apply()
-            removed
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to switch to bundled dictionary: ${e.message}")
-            false
-        }
     }
 
     private fun localDictionaryFile() = File(context.filesDir, "dictionary.json")

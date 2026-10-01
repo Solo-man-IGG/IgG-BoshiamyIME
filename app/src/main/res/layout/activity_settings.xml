@@ -352,15 +352,7 @@
             android:id="@+id/btn_update_dict"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="從 GitHub 下載最新碼表"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btn_use_bundled_dict"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="改用 App 內建碼表"
+            android:text="下載碼表（首次使用需下載）"
             android:textSize="14sp"
             android:layout_marginBottom="8dp" />
 
@@ -492,7 +484,7 @@
             android:id="@+id/tv_about_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="璦閣輸入法 v1.0.20&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源：chinese-opendesktop/cin-tables&#10;（碼表授權請以原始來源為準）"
+            android:text="璦閣輸入法 v1.0.24&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源（於設定頁下載，CC0-1.0）：&#10;chinese-opendesktop/cin-tables&#10;· uniliu.cin 萬國蝦米&#10;· boshiamy.cin 嘸蝦米（劉重次）&#10;兩份自動合併，缺字互補&#10;&#10;注音碼表：samejack/sc-dictionary&#10;OpenCC 資料：OpenCC 專案"
             android:textSize="13sp"
             android:textColor="#5F6368"
             android:lineSpacingExtra="4dp" />
