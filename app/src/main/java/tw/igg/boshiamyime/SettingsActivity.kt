@@ -506,6 +506,11 @@ class SettingsActivity : AppCompatActivity() {
         appUpdater = AppUpdater(this)
 
         tvAppVersion.text = "目前版本：v${currentVersionName()}"
+        findViewById<TextView>(R.id.tv_about_version)?.let { about ->
+            about.text = about.text.toString().replace(
+                Regex("v\\d+\\.\\d+\\.\\d+"), "v${currentVersionName()}"
+            )
+        }
         btnCheckUpdate.setOnClickListener {
             checkForUpdate(showResult = true)
         }
