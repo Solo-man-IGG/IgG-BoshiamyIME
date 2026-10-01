@@ -44,6 +44,14 @@ DEFAULT_OUT = os.path.join(ROOT, "app", "src", "main", "assets", "tables", "stan
 
 # 與 DictionaryDownloader.parseCinFile 保持一致
 CODE_PATTERN = re.compile(r"^[a-z,.'\[\]]+$")
+
+# uniliu.cin 收了 165 個假名但獨缺「の」，此處依該檔自身的假名慣例補上。
+#
+# 為何不用 unicon 的 hiragana.cin（原廠碼 a/ka/no）併入？因為碼位直接衝突：
+# 萬國蝦米的單字母是常用漢字（a=對、i=後、u=以、ka=黃、ta=頁），
+# 假名插進去會被常用字擠到第 10 碼以後，等於打不出來。
+# 萬國蝦米的假名一律帶 j 前綴與逗號（ja, / jka, / jn,）本就是為了避開這類撞碼。
+KANA_PATCH = [("jno,", "の")]
 T9_MAP = {
     **dict.fromkeys("abc", "2"),
     **dict.fromkeys("def", "3"),
@@ -109,6 +117,12 @@ def parse_cin(path):
             if key in seen:
                 continue
             seen.add(key)
+            entries.append((code, char))
+    # 補丁：uniliu.cin 收了 165 個假名但獨缺「の」，這裡依該檔自身慣例補回來。
+    # jno, 可能已被私用區字形（康熙部首，必然顯示方塊）佔用，此時仍要加入，
+    # 靠 GlyphSupport 把方塊字沉底讓「の」浮上來。
+    for code, char in KANA_PATCH:
+        if not any(c == char for _co, c in entries):
             entries.append((code, char))
     # Python 的排序是穩定的，同碼的字維持 .cin 內的原始順序作為最終排序依據
     entries.sort(key=lambda e: e[0])
