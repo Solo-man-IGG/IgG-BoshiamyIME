@@ -16,7 +16,7 @@ class DictionaryDownloader(private val context: Context) {
 
     companion object {
         private const val TAG = "DictionaryDownloader"
-        private const val CIN_URL = "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/boshiamy.cin"
+        private const val CIN_URL = "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/uniliu.cin"
         private const val PREFS_NAME = "boshiamy_dict"
         private const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
@@ -129,7 +129,7 @@ class DictionaryDownloader(private val context: Context) {
         root.put("version", version)
         root.put("encoding", "boshiamy-standard")
         root.put("source", "https://github.com/chinese-opendesktop/cin-tables")
-        root.put("source_file", "boshiamy.cin")
+        root.put("source_file", "uniliu.cin")
 
         val entriesArray = org.json.JSONArray()
         for (entry in entries) {

@@ -24,6 +24,9 @@ Thumbs.db
 # Build output
 app/build/
 
+# Downloaded source tables for tools/ (regenerate with tools/build-dictionary.py)
+tools/.cache/
+
 # Signing (do not commit secrets)
 *.jks
 *.keystore

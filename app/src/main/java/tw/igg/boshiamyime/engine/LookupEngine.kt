@@ -51,11 +51,11 @@ class LookupEngine(private val dictionary: DictionaryManager) {
     private val candidateOrder: Comparator<Candidate> = Comparator { a, b ->
         // 1. 完全命中優先
         if (a.isExactMatch != b.isExactMatch) return@Comparator if (a.isExactMatch) -1 else 1
-        // 2. 單碼、雙碼快選在前（碼越短越前）
-        if (a.code.length != b.code.length) return@Comparator a.code.length.compareTo(b.code.length)
-        // 3. 依有效使用次數（含使用者使用頻率）
+        // 2. 有效使用次數優先（使用者學過的字要能浮到前面）
         val aFreq = dictionary.effectiveFrequency(a.code, a.char)
         val bFreq = dictionary.effectiveFrequency(b.code, b.char)
-        bFreq.compareTo(aFreq)
+        if (aFreq != bFreq) return@Comparator bFreq.compareTo(aFreq)
+        // 3. 同頻率時短碼在前（打字省事）
+        a.code.length.compareTo(b.code.length)
     }
 }

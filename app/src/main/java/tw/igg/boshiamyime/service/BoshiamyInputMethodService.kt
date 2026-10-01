@@ -516,7 +516,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             if (dictionaryManager.getAssociations(a).contains(b)) 1 else 0
         }
         val seen = mutableSetOf<String>()
-        return (phrases + singles).filter { seen.add(it.char) }
+        return (singles + phrases).filter { seen.add(it.char) }
     }
 
     private fun updateZhuyinCandidates() {
