@@ -484,7 +484,7 @@
             android:id="@+id/tv_about_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="璦閣輸入法 v1.1.0&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源（於設定頁下載，CC0-1.0）：&#10;chinese-opendesktop/cin-tables&#10;· uniliu.cin 萬國蝦米&#10;· boshiamy.cin 嘸蝦米（劉重次）&#10;兩份自動合併，碼字並存（別名碼全部保留）&#10;&#10;字頻表：教育部語文司 常用字字頻表&#10;簡體字集：OpenCC（STCharacters）&#10;注音碼表：samejack/sc-dictionary"
+            android:text="璦閣輸入法 v1.1.1&#10;自訂嘸蝦米輸入法 Android App&#10;&#10;© 2026 璦閣數位科技&#10;本專案以 GPL-3.0 授權釋出（Open Source）&#10;&#10;碼表來源（於設定頁下載，CC0-1.0）：&#10;chinese-opendesktop/cin-tables&#10;· uniliu.cin 萬國蝦米&#10;· boshiamy.cin 嘸蝦米（劉重次）&#10;兩份自動合併，碼字並存（別名碼全部保留）&#10;&#10;字頻表：教育部語文司 常用字字頻表&#10;簡體字集：OpenCC（STCharacters）&#10;注音碼表：samejack/sc-dictionary"
             android:textSize="13sp"
             android:textColor="#5F6368"
             android:lineSpacingExtra="4dp" />

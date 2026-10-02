@@ -168,8 +168,10 @@ class DictionaryDownloader(private val context: Context) {
             }
             return entries.sortedBy { it.code }
         }
-            private const val PREFS_NAME = "boshiamy_dict"
-        private const val KEY_VERSION = "dict_version"
+            // 公開給輸入法服務訂閱：下載完成時會寫入 KEY_VERSION，
+        // 服務聽到這個 key 改變就知道該重載索引，不必等使用者重開輸入法。
+        const val PREFS_NAME = "boshiamy_dict"
+        const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
         private const val KEY_SOURCE_FILE = "dict_source_file"
     }

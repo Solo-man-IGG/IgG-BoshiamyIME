@@ -16,13 +16,20 @@ class DictionaryManager(private val context: Context) {
         private const val ASSETS_DIR = "tables"
     }
 
-    private val allEntries = mutableListOf<DictionaryEntry>()
-    private val codeIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
-    private val charIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
-    private val t9Index = mutableMapOf<String, MutableList<DictionaryEntry>>()
-    private val codePrefixIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
-    private val t9PrefixIndex = mutableMapOf<String, MutableList<DictionaryEntry>>()
-    private val associations = mutableMapOf<String, List<String>>()
+    /**
+     * 索引一律「先在區域變數建好，再整組替換」，且讀寫都在 indexLock 內。
+     * 這樣重新載入碼表時，正在打字的執行緒不會讀到清空到一半的索引
+     * （舊作法是就地 clear() 再重建，中間會有查詢miss或讀到空集合的空窗）。
+     * 替換本身只花幾微秒，所以查詢幾乎不會被阻塞。
+     */
+    private val indexLock = Any()
+    private var allEntries: List<DictionaryEntry> = emptyList()
+    private var codeIndex: Map<String, List<DictionaryEntry>> = emptyMap()
+    private var charIndex: Map<String, List<DictionaryEntry>> = emptyMap()
+    private var t9Index: Map<String, List<DictionaryEntry>> = emptyMap()
+    private var codePrefixIndex: Map<String, List<DictionaryEntry>> = emptyMap()
+    private var t9PrefixIndex: Map<String, List<DictionaryEntry>> = emptyMap()
+    private var associations: Map<String, List<String>> = emptyMap()
     private val usageFrequency = mutableMapOf<String, Int>()
     private val learnedAssociations = mutableMapOf<String, MutableMap<String, Int>>()
 
@@ -110,16 +117,13 @@ class DictionaryManager(private val context: Context) {
         editor.apply()
     }
 
+    /**
+     * 重新載入碼表索引（設定頁下載完成後呼叫，讓新碼表立刻生效）。
+     * 只換索引，不動 usageFrequency / learnedAssociations ——
+     * 使用者學起來的字頻與詞聯不該因為更新碼表而消失。
+     * 舊的 reloadDictionary() 會把這兩個清掉而且沒從 prefs 讀回，等於清除學習成果。
+     */
     fun reloadDictionary() {
-        allEntries.clear()
-        codeIndex.clear()
-        charIndex.clear()
-        t9Index.clear()
-        codePrefixIndex.clear()
-        t9PrefixIndex.clear()
-        associations.clear()
-        usageFrequency.clear()
-        learnedAssociations.clear()
         isLoaded = false
         loadDictionary()
     }
@@ -138,12 +142,12 @@ class DictionaryManager(private val context: Context) {
     }
 
     private fun parseDictionary(json: String) {
-        allEntries.clear()
-        codeIndex.clear()
-        charIndex.clear()
-        t9Index.clear()
-        codePrefixIndex.clear()
-        t9PrefixIndex.clear()
+        val newAll = mutableListOf<DictionaryEntry>()
+        val newCode = mutableMapOf<String, MutableList<DictionaryEntry>>()
+        val newChar = mutableMapOf<String, MutableList<DictionaryEntry>>()
+        val newT9 = mutableMapOf<String, MutableList<DictionaryEntry>>()
+        val newCodePrefix = mutableMapOf<String, MutableList<DictionaryEntry>>()
+        val newT9Prefix = mutableMapOf<String, MutableList<DictionaryEntry>>()
 
         val root = JSONObject(json)
         val entriesArray = root.getJSONArray("entries")
@@ -158,20 +162,29 @@ class DictionaryManager(private val context: Context) {
                 phrases = emptyList()
             )
 
-            allEntries.add(entry)
-            codeIndex.getOrPut(entry.code) { mutableListOf() }.add(entry)
-            charIndex.getOrPut(entry.char) { mutableListOf() }.add(entry)
+            newAll.add(entry)
+            newCode.getOrPut(entry.code) { mutableListOf() }.add(entry)
+            newChar.getOrPut(entry.char) { mutableListOf() }.add(entry)
             if (entry.t9.isNotEmpty()) {
-                t9Index.getOrPut(entry.t9) { mutableListOf() }.add(entry)
+                newT9.getOrPut(entry.t9) { mutableListOf() }.add(entry)
                 for (len in 1..entry.t9.length) {
                     val prefix = entry.t9.substring(0, len)
-                    t9PrefixIndex.getOrPut(prefix) { mutableListOf() }.add(entry)
+                    newT9Prefix.getOrPut(prefix) { mutableListOf() }.add(entry)
                 }
             }
             for (len in 1..entry.code.length) {
                 val prefix = entry.code.substring(0, len)
-                codePrefixIndex.getOrPut(prefix) { mutableListOf() }.add(entry)
+                newCodePrefix.getOrPut(prefix) { mutableListOf() }.add(entry)
             }
+        }
+
+        synchronized(indexLock) {
+            allEntries = newAll
+            codeIndex = newCode
+            charIndex = newChar
+            t9Index = newT9
+            codePrefixIndex = newCodePrefix
+            t9PrefixIndex = newT9Prefix
         }
     }
 
@@ -181,45 +194,48 @@ class DictionaryManager(private val context: Context) {
             val root = JSONObject(json)
             val assocObj = root.getJSONObject("associations")
 
+            val newAssoc = mutableMapOf<String, List<String>>()
             for (key in assocObj.keys()) {
                 val arr = assocObj.getJSONArray(key)
                 val list = mutableListOf<String>()
                 for (i in 0 until arr.length()) {
                     list.add(arr.getString(i))
                 }
-                associations[key] = list
+                newAssoc[key] = list
             }
+            synchronized(indexLock) { associations = newAssoc }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load associations: ${e.message}")
         }
     }
 
     fun lookup(code: String): List<DictionaryEntry> {
-        return codeIndex[code]?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        val hit = synchronized(indexLock) { codeIndex[code] }
+        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
     }
 
     fun lookupPrefix(prefix: String): List<DictionaryEntry> {
-        return codePrefixIndex[prefix]
-            ?.sortedByDescending { getEffectiveFrequency(it) }
-            ?: emptyList()
+        val hit = synchronized(indexLock) { codePrefixIndex[prefix] }
+        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
     }
 
     fun lookupByChar(char: String): DictionaryEntry? {
-        return charIndex[char]?.firstOrNull()
+        val hit = synchronized(indexLock) { charIndex[char] }
+        return hit?.firstOrNull()
     }
 
     fun lookupT9(t9Code: String): List<DictionaryEntry> {
-        return t9Index[t9Code]?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        val hit = synchronized(indexLock) { t9Index[t9Code] }
+        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
     }
 
     fun lookupT9Prefix(t9Prefix: String): List<DictionaryEntry> {
-        return t9PrefixIndex[t9Prefix]
-            ?.sortedByDescending { getEffectiveFrequency(it) }
-            ?: emptyList()
+        val hit = synchronized(indexLock) { t9PrefixIndex[t9Prefix] }
+        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
     }
 
     fun getAssociations(char: String): List<String> {
-        val static = associations[char] ?: emptyList()
+        val static = synchronized(indexLock) { associations[char] } ?: emptyList()
         val learned = learnedAssociations[char]
             ?.entries
             ?.sortedByDescending { it.value }
@@ -245,7 +261,9 @@ class DictionaryManager(private val context: Context) {
 
     fun effectiveFrequency(code: String, char: String): Int {
         val userFreq = usageFrequency[char] ?: 0
-        val static = codeIndex[code]?.firstOrNull { it.char == char }?.frequency ?: 0
+        val static = synchronized(indexLock) {
+            codeIndex[code]?.firstOrNull { it.char == char }?.frequency
+        } ?: 0
         return static + userFreq * 1000
     }
 }

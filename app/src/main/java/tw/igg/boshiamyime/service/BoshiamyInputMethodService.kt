@@ -2,6 +2,7 @@ package tw.igg.boshiamyime.service
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
+import tw.igg.boshiamyime.data.DictionaryDownloader
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
@@ -59,6 +60,13 @@ class BoshiamyInputMethodService : InputMethodService(),
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var isDictionaryReady = false
 
+    /** 已載入記憶體的碼表版本；用來察覺「檔案比記憶體新」的情況。 */
+    private var loadedDictVersion: String? = null
+
+    private fun currentDictVersion(): String =
+        getSharedPreferences(DictionaryDownloader.PREFS_NAME, MODE_PRIVATE)
+            .getString(DictionaryDownloader.KEY_VERSION, "") ?: ""
+
     private var isShifted = false
     private var isCapsLock = false
     private var lastShiftTime = 0L
@@ -82,6 +90,10 @@ class BoshiamyInputMethodService : InputMethodService(),
         zhuyinEngine = ZhuyinEngine(this)
         engineManager = InputEngineManager(lookupEngine, t9Engine)
         prefs.registerOnSharedPreferenceChangeListener(themeChangeListener)
+        DictionaryDownloader.PREFS_NAME.let { dictPrefs ->
+            getSharedPreferences(dictPrefs, MODE_PRIVATE)
+                .registerOnSharedPreferenceChangeListener(dictChangeListener)
+        }
 
         val initialMode = when (prefs.getString("default_input_mode", "T9")) {
             "QWERTY" -> KeyboardMode.QWERTY
@@ -100,6 +112,7 @@ class BoshiamyInputMethodService : InputMethodService(),
                 Log.i("BoshiamyIME", "Dictionary loading finished")
             }
             isDictionaryReady = true
+            loadedDictVersion = currentDictVersion()
         }
     }
 
@@ -114,10 +127,41 @@ class BoshiamyInputMethodService : InputMethodService(),
     override fun onDestroy() {
         serviceScope.cancel()
         prefs.unregisterOnSharedPreferenceChangeListener(themeChangeListener)
+        getSharedPreferences(DictionaryDownloader.PREFS_NAME, MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(dictChangeListener)
         soundPool?.release()
         soundPool = null
         super.onDestroy()
     }
+
+    /**
+     * 設定頁下載／重新下載碼表後自動重載，讓新碼表立刻生效。
+     *
+     * 舊的話必須重開輸入法（服務被重���才會重新 onCreate → loadDictionary）
+     * 或清快取才會換上，使用者常常下載完不知道要重開。
+     *
+     * 重載在 IO 執行緒進行；DictionaryManager 改成「建好索引再整組替換」，
+     * 所以就算使用者同一時間正在打字，也不會讀到半套索引。
+     * 使用者學起來的字頻與詞聯不會被清掉。
+     */
+    private val dictChangeListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key != DictionaryDownloader.KEY_VERSION) return@OnSharedPreferenceChangeListener
+            Log.i("BoshiamyIME", "Dictionary version changed, reloading in place")
+            serviceScope.launch {
+                withContext(Dispatchers.IO) {
+                    // 先標成未就緒，避免重載期間用到舊索引
+                    isDictionaryReady = false
+                    dictionaryManager.reloadDictionary()
+                    loadedDictVersion = currentDictVersion()
+                    isDictionaryReady = true
+                }
+                Log.i(
+                    "BoshiamyIME",
+                    "Dictionary reloaded: ${dictionaryManager.getEntryCount()} entries"
+                )
+            }
+        }
 
     private val themeChangeListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -207,6 +251,14 @@ class BoshiamyInputMethodService : InputMethodService(),
 
     override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(attribute, restarting)
+
+        // 保險：App 更新後若服務僥倖存活（部分廠商/助理不會殺行程），
+        // 這裡比對一次版本就知道記憶體的碼表是不是過期了。
+        // SharedPreferences 已在記憶體，比對成本可忽略。
+        if (loadedDictVersion != null && loadedDictVersion != currentDictVersion()) {
+            dictChangeListener.onSharedPreferenceChanged(null, DictionaryDownloader.KEY_VERSION)
+        }
+
         engineManager.clearInput()
         zhuyinInput = ""
         zhuyinComplete = false
