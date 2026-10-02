@@ -106,6 +106,41 @@ class DictionaryDownloaderTest {
     }
 
     @Test
+    fun 合併以碼字配對去重而非以字去重() {
+        // 兩表取碼哲學不同：あ 在 uniliu 是 ja,、在 boshiamy 是 a,。
+        // 若以字去重，a, 會被整筆丟掉；必須以配對去重才能兩套並存。
+        val uniliu = """
+            %chardef begin
+            ja,	あ
+            jn,	ん
+            %chardef end
+        """.trimIndent()
+        val boshiamy = """
+            %chardef begin
+            a,	あ
+            n,	ん
+            no,	の
+            %chardef end
+        """.trimIndent()
+
+        val merged = DictionaryDownloader.mergeCins(uniliu, boshiamy)
+        fun codesOf(char: String) = merged.filter { it.char == char }.map { it.code }.sorted()
+
+        assertEquals(listOf("a,", "ja,"), codesOf("あ"))
+        assertEquals(listOf("jn,", "n,"), codesOf("ん"))
+        assertEquals(listOf("no,"), codesOf("の"))
+    }
+
+    @Test
+    fun 完全相同的配對不會重複出現() {
+        val a = "%chardef begin\nja,\tあ\n%chardef end"
+        val b = "%chardef begin\nja,\tあ\nno,\tの\n%chardef end"
+        val merged = DictionaryDownloader.mergeCins(a, b)
+        assertEquals(2, merged.size)
+        assertEquals(1, merged.count { it.char == "あ" })
+    }
+
+    @Test
     fun 使用者自訂頻率壓得過靜態字頻() {
         // DictionaryManager 以 userFreq * 1000 計算；靜態值上限是 999，
         // 使用者只要選过一次就必須能排到最前面。

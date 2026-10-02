@@ -94,7 +94,81 @@ class DictionaryDownloader(private val context: Context) {
             }
             return result
         }
-        private const val PREFS_NAME = "boshiamy_dict"
+
+        /**
+         * 合併兩份碼表，去重主鍵是「碼 + 字」的配對，不是單獨的字。
+         *
+         * 為什麼不是以字去重：兩表的取碼哲學不同，同一個字在兩邊的碼並不一樣。
+         * 以字去重會讓「先讀到的那一表」獨占該字的所有碼，另一表提供的別名碼
+         * 全部被丟掉，使用者只能被迫學會其中一套。例如：
+         *   あ：uniliu 給 ja,，boshiamy 給 a,
+         *   ん：uniliu 給 jn,，boshiamy 另有 m, mn, n, ng, nn,
+         * 以字去重時這些別名碼一筆都留不下來。
+         *
+         * 以配對去重則是兩套取碼並存：使用者熟悉哪套都能打出來。
+         * 兩表字集幾乎重疊，所以實際只多 295 筆（97,157 → 97,452），字數不變。
+         * 代價是部分碼的候選數增加（如 a, 由 2 個變 4 個），但候選排序本來就
+         * 以字頻優先、使用者自訂頻率 ×1000 壓過靜態值，實際看到的仍是常用字。
+         */
+        internal fun mergeCins(primary: String, supplement: String): List<DictionaryEntry> {
+            val main = parseCinFile(primary)
+            val seen = HashSet<Pair<String, String>>(main.size * 2)
+            for (e in main) seen.add(e.code to e.char)
+
+            val extra = parseCinFile(supplement).filter { seen.add(it.code to it.char) }
+            return (main + extra).sortedBy { it.code }
+        }
+
+        private fun parseCinFile(cinContent: String): List<DictionaryEntry> {
+            val entries = mutableListOf<DictionaryEntry>()
+            val seen = mutableSetOf<String>()
+
+            val t9Map = mapOf(
+                'a' to "2", 'b' to "2", 'c' to "2",
+                'd' to "3", 'e' to "3", 'f' to "3",
+                'g' to "4", 'h' to "4", 'i' to "4",
+                'j' to "5", 'k' to "5", 'l' to "5",
+                'm' to "6", 'n' to "6", 'o' to "6",
+                'p' to "7", 'q' to "7", 'r' to "7", 's' to "7",
+                't' to "8", 'u' to "8", 'v' to "8",
+                'w' to "9", 'x' to "9", 'y' to "9", 'z' to "9"
+            )
+
+            var inChardef = false
+            for (line in cinContent.lines()) {
+                val trimmed = line.trim()
+                if (trimmed == "%chardef begin") {
+                    inChardef = true
+                    continue
+                }
+                if (trimmed == "%chardef end") break
+                if (!inChardef || trimmed.isEmpty() || trimmed.startsWith("#")) continue
+
+                val parts = trimmed.split("\\s+".toRegex(), limit = 2)
+                if (parts.size != 2) continue
+
+                val code = parts[0].lowercase()
+                val char = parts[1]
+
+                if (!Regex("^[a-z,.'\\[\\]]+$").matches(code)) continue
+                if (code.isEmpty()) continue
+
+                val key = "$code|$char"
+                if (key in seen) continue
+                seen.add(key)
+
+                val t9 = code.map { t9Map[it] ?: it }.joinToString("")
+
+                entries.add(DictionaryEntry(
+                    code = code,
+                    t9 = t9,
+                    char = char,
+                    frequency = 0
+                ))
+            }
+            return entries.sortedBy { it.code }
+        }
+            private const val PREFS_NAME = "boshiamy_dict"
         private const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
         private const val KEY_SOURCE_FILE = "dict_source_file"
@@ -185,71 +259,6 @@ class DictionaryDownloader(private val context: Context) {
         }
     }
 
-    /**
-     * 合併兩份碼表：以 uniliu.cin（萬國蝦米）為主，boshiamy.cin（原廠嘸蝦米）
-     * 只補前者沒有的字。兩表的漢字覆蓋幾乎重疊，差異是原廠多出 42 個字
-     * （№ ①② ⅰⅱ 羅馬數字，以及日文會用到的 々 〆 ゞ ヂ ヅ ヴ ヾ），
-     * 而萬國蝦米獨缺「の」。合併後兩邊的缺字都補齊。
-     */
-    private fun mergeCins(primary: String, supplement: String): List<DictionaryEntry> {
-        val main = parseCinFile(primary)
-        val existingChars = HashSet<String>(main.size * 2)
-        for (e in main) existingChars.add(e.char)
-
-        val extra = parseCinFile(supplement).filter { existingChars.add(it.char) }
-        Log.i(TAG, "mergeCins: ${main.size} + ${extra.size} = ${main.size + extra.size}")
-        return (main + extra).sortedBy { it.code }
-    }
-
-    private fun parseCinFile(cinContent: String): List<DictionaryEntry> {
-        val entries = mutableListOf<DictionaryEntry>()
-        val seen = mutableSetOf<String>()
-
-        val t9Map = mapOf(
-            'a' to "2", 'b' to "2", 'c' to "2",
-            'd' to "3", 'e' to "3", 'f' to "3",
-            'g' to "4", 'h' to "4", 'i' to "4",
-            'j' to "5", 'k' to "5", 'l' to "5",
-            'm' to "6", 'n' to "6", 'o' to "6",
-            'p' to "7", 'q' to "7", 'r' to "7", 's' to "7",
-            't' to "8", 'u' to "8", 'v' to "8",
-            'w' to "9", 'x' to "9", 'y' to "9", 'z' to "9"
-        )
-
-        var inChardef = false
-        for (line in cinContent.lines()) {
-            val trimmed = line.trim()
-            if (trimmed == "%chardef begin") {
-                inChardef = true
-                continue
-            }
-            if (trimmed == "%chardef end") break
-            if (!inChardef || trimmed.isEmpty() || trimmed.startsWith("#")) continue
-
-            val parts = trimmed.split("\\s+".toRegex(), limit = 2)
-            if (parts.size != 2) continue
-
-            val code = parts[0].lowercase()
-            val char = parts[1]
-
-            if (!Regex("^[a-z,.'\\[\\]]+$").matches(code)) continue
-            if (code.isEmpty()) continue
-
-            val key = "$code|$char"
-            if (key in seen) continue
-            seen.add(key)
-
-            val t9 = code.map { t9Map[it] ?: it }.joinToString("")
-
-            entries.add(DictionaryEntry(
-                code = code,
-                t9 = t9,
-                char = char,
-                frequency = 0
-            ))
-        }
-        return entries.sortedBy { it.code }
-    }
 
     /**
      * 版本字串以「筆數 + 內容雜湊」組成。
