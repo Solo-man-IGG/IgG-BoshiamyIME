@@ -432,8 +432,8 @@ class SettingsActivity : AppCompatActivity() {
             btnUpdate.text = "下載碼表（首次使用需下載）"
             tvDictSource.visibility = View.VISIBLE
             tvDictSource.text =
-                "碼表（萬國蝦米 + 原廠嘸蝦米，約 97,000 字）不隨 App 內建，" +
-                    "需從 GitHub 下載後才能使用。下載需約 1.1 MB，請確認可連網。" +
+                "碼表（萬國蝦米 + 原廠嘸蝦米，約 97,000 筆）不隨 App 內建，" +
+                    "需從 GitHub 下載後才能使用。連同字頻表共約 1.2 MB，請確認可連網。" +
                     "兩份碼表會自動合併，缺字（例：日文「の」、符號 № ①、々 〆 ヂ ヅ ヴ）已互補。"
             return
         }
@@ -451,8 +451,9 @@ class SettingsActivity : AppCompatActivity() {
                 "· uniliu.cin 萬國蝦米\n" +
                 "· boshiamy.cin 嘸蝦米（劉重次）\n" +
                 "兩份自動合併，缺字互補\n\n" +
-                "注音碼表：samejack/sc-dictionary\n" +
-                "OpenCC 資料：OpenCC 專案"
+                "字頻表：教育部語文司 常用字字頻表（5,702 字）\n" +
+                "簡體字集：OpenCC STCharacters（3,809 字）\n" +
+                "注音碼表：samejack/sc-dictionary"
         } else {
             "來源：已下載的碼表"
         }

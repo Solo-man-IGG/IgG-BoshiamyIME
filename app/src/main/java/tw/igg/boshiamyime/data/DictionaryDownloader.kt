@@ -21,6 +21,79 @@ class DictionaryDownloader(private val context: Context) {
             "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/"
         private const val CIN_PRIMARY = "uniliu.cin"
         private const val CIN_SUPPLEMENT = "boshiamy.cin"
+
+        // 字頻與簡體字集放在本專案 repo，供下載器套用。
+        // 放在 GitHub 而非打包進 APK 的理由：字頻可獨立更新，且讓「下載版」
+        // 與「內建版」走同一條路徑，不會再出現只有某一版有字頻的不一致。
+        private const val DATA_BASE_URL =
+            "https://raw.githubusercontent.com/Solo-man-IGG/IgG-BoshiamyIME/master/tools/data/"
+        private const val DATA_CHARC_COUNT = "moe-char-count.tsv"
+        private const val DATA_SIMPLIFIED = "simplified-only.txt"
+
+        // 與 tools/build-dictionary.py 保持一致：字頻壓縮到 1..999，
+        // 使用者自訂頻率 * 1000 一定壓得過靜態值。
+        private const val STATIC_MAX = 999
+        private const val SIMPLIFIED_PENALTY = 1_000_000
+
+        /**
+         * 解析教育部字頻表（tools/data/moe-char-count.tsv）。
+         * 格式：以 # 開頭為註解，資料行為「字元<TAB>原始出現頻次」。
+         */
+        internal fun parseCharCount(content: String): Map<String, Int> {
+            val counts = HashMap<String, Int>(8192)
+            for (line in content.lineSequence()) {
+                val trimmed = line.trim()
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
+                val tab = trimmed.indexOf('\t')
+                if (tab <= 0) continue
+                val char = trimmed.substring(0, tab)
+                val count = trimmed.substring(tab + 1).trim().toIntOrNull() ?: continue
+                // 用 codePointCount 判斷「單一字元」：Kotlin 的 String.length 算 UTF-16
+                // 單位，倉頡補集的罕見字（U+20000 以上）會算成 2 而被誤判跳過。
+                if (isSingleChar(char) && count > 0) counts[char] = count
+            }
+            return counts
+        }
+
+        /** 解析簡體降權字集（tools/data/simplified-only.txt），每行一字。 */
+        internal fun parseSimplifiedSet(content: String): Set<String> {
+            val chars = HashSet<String>(8192)
+            for (line in content.lineSequence()) {
+                val char = line.trim()
+                if (char.isEmpty() || char.startsWith("#")) continue
+                if (isSingleChar(char)) chars.add(char)
+            }
+            return chars
+        }
+
+        private fun isSingleChar(s: String): Boolean =
+            s.isNotEmpty() && s.codePointCount(0, s.length) == 1
+
+        /**
+         * 套用字頻與簡體降權，與 tools/build-dictionary.py 的 static_frequency() 一致：
+         * 原始頻次取對數壓縮到 1..999；不在字頻表的罕見/異體字給 0。
+         * 簡體字保留頻次量體但整體壓到負數區，確保一定排在正體後面。
+         */
+        internal fun applyFrequency(
+            entries: List<DictionaryEntry>,
+            counts: Map<String, Int>,
+            simplified: Set<String>
+        ): List<DictionaryEntry> {
+            val logTop = Math.log(counts.values.max().toDouble())
+            val result = entries.map { e ->
+                val count = counts[e.char]
+                var freq = if (count == null || count <= 0) 0 else {
+                    1 + Math.round(
+                        (STATIC_MAX - 1) * Math.log(count.toDouble()) / logTop
+                    ).toInt()
+                }
+                if (e.char in simplified) {
+                    freq = -SIMPLIFIED_PENALTY + Math.abs(freq)
+                }
+                if (e.frequency != freq) e.copy(frequency = freq) else e
+            }
+            return result
+        }
         private const val PREFS_NAME = "boshiamy_dict"
         private const val KEY_VERSION = "dict_version"
         private const val KEY_ENTRY_COUNT = "dict_entry_count"
@@ -37,18 +110,41 @@ class DictionaryDownloader(private val context: Context) {
         try {
             callback.onProgress(5)
 
-            val primary = fetchCin(CIN_PRIMARY)
+            val primary = fetchUrl(CIN_BASE_URL + CIN_PRIMARY)
                 ?: return@withContext callback.onError("下載 $CIN_PRIMARY 失敗，請檢查網路")
-            callback.onProgress(40)
+            callback.onProgress(30)
 
-            val supplement = fetchCin(CIN_SUPPLEMENT)
+            val supplement = fetchUrl(CIN_BASE_URL + CIN_SUPPLEMENT)
                 ?: return@withContext callback.onError("下載 $CIN_SUPPLEMENT 失敗，請檢查網路")
-            callback.onProgress(65)
+            callback.onProgress(50)
 
-            val entries = mergeCins(primary, supplement)
-            callback.onProgress(85)
+            val charCount = fetchUrl(DATA_BASE_URL + DATA_CHARC_COUNT)
+            val simplified = fetchUrl(DATA_BASE_URL + DATA_SIMPLIFIED)
+            if (charCount != null && simplified != null) {
+                callback.onProgress(65)
+            }
+            val merged = mergeCins(primary, supplement)
+            callback.onProgress(80)
 
-            val version = "merged-${System.currentTimeMillis()}"
+            // 字頻與簡體降權是排序正確性的關鍵；缺了會讓所有候選字頻率為 0，
+            // 退化回「碼短優先」的舊排序。因此拿不到字頻時直接中止，不寫入殘缺字典。
+            if (charCount == null || simplified == null) {
+                callback.onError("下載字頻資料失敗，請檢查網路後重試")
+                return@withContext
+            }
+
+            val counts = parseCharCount(charCount)
+            val simplifiedChars = parseSimplifiedSet(simplified)
+            if (counts.isEmpty() || simplifiedChars.isEmpty()) {
+                callback.onError("字頻資料格式異常，已中止（避免排序退化）")
+                return@withContext
+            }
+            Log.i(TAG, "字頻 ${counts.size} 字、簡體 ${simplifiedChars.size} 字")
+
+            val entries = applyFrequency(merged, counts, simplifiedChars)
+            callback.onProgress(92)
+
+            val version = buildVersion(entries, counts)
             saveDictionary(entries, version)
             callback.onProgress(100)
 
@@ -67,14 +163,14 @@ class DictionaryDownloader(private val context: Context) {
         }
     }
 
-    private fun fetchCin(fileName: String): String? {
+    private fun fetchUrl(url: String): String? {
         return try {
-            val connection = URL(CIN_BASE_URL + fileName).openConnection() as HttpURLConnection
+            val connection = URL(url).openConnection() as HttpURLConnection
             connection.connectTimeout = 15000
             connection.readTimeout = 30000
             connection.connect()
             if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                Log.w(TAG, "HTTP ${connection.responseCode} for $fileName")
+                Log.w(TAG, "HTTP ${connection.responseCode} for $url")
                 connection.disconnect()
                 return null
             }
@@ -84,7 +180,7 @@ class DictionaryDownloader(private val context: Context) {
             connection.disconnect()
             content
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch $fileName", e)
+            Log.e(TAG, "Failed to fetch $url", e)
             null
         }
     }
@@ -152,8 +248,28 @@ class DictionaryDownloader(private val context: Context) {
                 frequency = 0
             ))
         }
-
         return entries.sortedBy { it.code }
+    }
+
+    /**
+     * 版本字串以「筆數 + 內容雜湊」組成。
+     * 內容雜湊讓上游更新碼表時版本號必然改變，之後要判斷「有新版可用」
+     * 只需比對這個字串，不必另存下載時間戳。
+     */
+    private fun buildVersion(entries: List<DictionaryEntry>, counts: Map<String, Int>): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val payload = buildString {
+            append(entries.size).append(':').append(counts.size).append(':')
+            append(DATA_CHARC_COUNT).append(':').append(DATA_SIMPLIFIED).append('\n')
+            for (e in entries) {
+                append(e.code).append('|').append(e.char).append('|')
+                .append(e.frequency).append('\n')
+            }
+        }
+        val hash = digest.digest(payload.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+            .take(12)
+        return "${entries.size}字-$hash"
     }
 
     private fun saveDictionary(entries: List<DictionaryEntry>, version: String) {
@@ -161,7 +277,8 @@ class DictionaryDownloader(private val context: Context) {
         root.put("version", version)
         root.put("encoding", "boshiamy-standard")
         root.put("source", "https://github.com/chinese-opendesktop/cin-tables")
-        root.put("source_file", "uniliu.cin")
+        root.put("source_file", "$CIN_PRIMARY + $CIN_SUPPLEMENT")
+        root.put("frequency_source", "$DATA_BASE_URL$DATA_CHARC_COUNT")
 
         val entriesArray = org.json.JSONArray()
         for (entry in entries) {
