@@ -17,7 +17,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 收縮（F-Droid 審查者 linsui 要求 2026-10-08）。
+            // proguard-rules.pro 已有 -keep class tw.igg.boshiamyime.** { *; }，
+            // 所以收縮的只有函式庫程式碼、自家程式碼不受混淆，風險可控。
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
