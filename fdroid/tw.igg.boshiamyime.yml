@@ -3,7 +3,7 @@
 # 檔名固定為 <applicationId>.yml。
 # 注意：Summary/Description 不放這裡——依維護者指示改放
 # fastlane/metadata/android/（F-Droid 會自動拉取）。
-# 本檔為 fork MR 上 metadata 的鏡像（2026-09-20 MR head 58ad3fea，canonical rewritemeta 格式，pipeline 全綠）。
+# 本檔為 fork MR 上 metadata 的鏡像（2026-10-08 更新：pin 9dba162 = v1.1.1/v29，含 R8；canonical rewritemeta 格式）。
 Categories:
   - Keyboard & IME
 License: GPL-3.0-only
@@ -22,9 +22,9 @@ Binaries:
   https://github.com/Solo-man-IGG/IgG-BoshiamyIME/releases/download/v%v/boshiamy-%v-release.apk
 
 Builds:
-  - versionName: 1.0.19
-    versionCode: 20
-    commit: dba412e8e69019d6510ceca31333abcaaeab8a3a
+  - versionName: 1.1.1
+    versionCode: 29
+    commit: 9dba16273be5ad0e520aa0b7ce0ddb4d31368a5d
     subdir: app
     gradle:
       - yes
@@ -33,5 +33,5 @@ AllowedAPKSigningKeys: b50efdf68b60084d8ee32634b9913833ca916b33ea875f000975bc201
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.0.19
-CurrentVersionCode: 20
+CurrentVersion: 1.1.1
+CurrentVersionCode: 29
