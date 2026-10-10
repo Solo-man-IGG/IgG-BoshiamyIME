@@ -1,8 +1,8 @@
+AntiFeatures:
+  - NonFreeNet
 Categories:
   - Keyboard & IME
 License: GPL-3.0-only
-AntiFeatures:
-  - NonFreeNet
 AuthorName: IgG Digital Technology
 WebSite: https://www.igg.tw/
 SourceCode: https://github.com/Solo-man-IGG/IgG-BoshiamyIME
