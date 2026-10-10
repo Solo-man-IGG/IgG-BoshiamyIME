@@ -1,12 +1,8 @@
-# fdroid metadata for 璦閣輸入法 (BoshiamyIME)
-# 提交至 F-Droid 官方庫（fdroiddata）時以此檔為準，
-# 檔名固定為 <applicationId>.yml。
-# 注意：Summary/Description 不放這裡——依維護者指示改放
-# fastlane/metadata/android/（F-Droid 會自動拉取）。
-# 本檔為 fork MR 上 metadata 的鏡像（2026-10-08 更新：pin 9dba162 = v1.1.1/v29，含 R8；canonical rewritemeta 格式）。
 Categories:
   - Keyboard & IME
 License: GPL-3.0-only
+AntiFeatures:
+  - NonFreeNet
 AuthorName: IgG Digital Technology
 WebSite: https://www.igg.tw/
 SourceCode: https://github.com/Solo-man-IGG/IgG-BoshiamyIME
