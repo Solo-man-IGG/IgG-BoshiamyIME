@@ -1,6 +1,6 @@
 AntiFeatures:
   NonFreeNet:
-    en-US: Rely on GitHub to download the core lexicon on first use, without which the keyboard cannot be used.
+    en-US: Rely on GitHub to download the lexicon on first use.
 Categories:
   - Keyboard & IME
 License: GPL-3.0-only
