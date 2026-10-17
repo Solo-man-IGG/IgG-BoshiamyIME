@@ -138,8 +138,9 @@ class SettingsActivity : AppCompatActivity() {
     ) {
         val spinner = findViewById<Spinner>(spinnerId)
         spinner.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item, options
+            this, R.layout.spinner_item, options
         )
+        spinner.setPopupBackgroundResource(android.R.color.white)
         val index = values.indexOfFirst { it == saved }.coerceAtLeast(0)
         spinner.setSelection(index)
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
