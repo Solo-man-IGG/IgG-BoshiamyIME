@@ -543,10 +543,31 @@ class SettingsActivity : AppCompatActivity() {
                 Regex("v\\d+\\.\\d+\\.\\d+"), "v${currentVersionName()}"
             )
         }
+
+        val switchUpdate = findViewById<Switch>(R.id.switch_update_check)
+        val enabled = prefs.getBoolean("update_check_enabled", false)
+
         btnCheckUpdate.setOnClickListener {
             checkForUpdate(showResult = true)
         }
-        checkForUpdate(showResult = false)
+
+        switchUpdate.isChecked = enabled
+        switchUpdate.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("update_check_enabled", isChecked).apply()
+            btnCheckUpdate.isEnabled = isChecked
+            btnCheckUpdate.alpha = if (isChecked) 1f else 0.5f
+            if (isChecked) {
+                checkForUpdate(showResult = false)
+            } else {
+                tvUpdateStatus.text = "更新檢查已停用（更新並非來自 F-Droid）"
+            }
+        }
+
+        if (enabled) {
+            checkForUpdate(showResult = false)
+        } else {
+            tvUpdateStatus.text = "更新檢查已停用（更新並非來自 F-Droid）"
+        }
     }
 
     private fun currentVersionName(): String {

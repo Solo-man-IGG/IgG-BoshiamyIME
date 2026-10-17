@@ -70,13 +70,13 @@ class KeyboardView @JvmOverloads constructor(
     }
 
     private val keySubTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#70757A")
+        color = Color.parseColor("#202124")
         textSize = 34f
         textAlign = Paint.Align.CENTER
     }
 
     private val spaceHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#70757A")
+        color = Color.parseColor("#202124")
         textSize = 34f
         textAlign = Paint.Align.LEFT
     }
