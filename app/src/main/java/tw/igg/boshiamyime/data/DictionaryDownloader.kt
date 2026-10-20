@@ -111,12 +111,13 @@ class DictionaryDownloader(private val context: Context) {
          * 以字頻優先、使用者自訂頻率 ×1000 壓過靜態值，實際看到的仍是常用字。
          */
         internal fun mergeCins(primary: String, supplement: String): List<DictionaryEntry> {
+            // boshiamy.cin 優先且依其原始順序；uniliu.cin 補缺字，追加到後面且保留其原始相對順序
             val main = parseCinFile(primary)
             val seen = HashSet<Pair<String, String>>(main.size * 2)
             for (e in main) seen.add(e.code to e.char)
 
             val extra = parseCinFile(supplement).filter { seen.add(it.code to it.char) }
-            return (main + extra).sortedBy { it.code }
+            return (main + extra)
         }
 
         private fun parseCinFile(cinContent: String): List<DictionaryEntry> {
@@ -127,7 +128,7 @@ class DictionaryDownloader(private val context: Context) {
                 'a' to "2", 'b' to "2", 'c' to "2",
                 'd' to "3", 'e' to "3", 'f' to "3",
                 'g' to "4", 'h' to "4", 'i' to "4",
-                'j' to "5", 'k' to "5", 'l' to "5",
+                'j' to "5", 'k' to "5', 'l' to "5",
                 'm' to "6", 'n' to "6", 'o' to "6",
                 'p' to "7", 'q' to "7", 'r' to "7", 's' to "7",
                 't' to "8", 'u' to "8", 'v' to "8",
@@ -135,6 +136,7 @@ class DictionaryDownloader(private val context: Context) {
             )
 
             var inChardef = false
+            var order = 0
             for (line in cinContent.lines()) {
                 val trimmed = line.trim()
                 if (trimmed == "%chardef begin") {
@@ -163,10 +165,12 @@ class DictionaryDownloader(private val context: Context) {
                     code = code,
                     t9 = t9,
                     char = char,
-                    frequency = 0
+                    frequency = 0,
+                    originalOrder = order++
                 ))
             }
-            return entries.sortedBy { it.code }
+            return entries
+        }
         }
             // 公開給輸入法服務訂閱：下載完成時會寫入 KEY_VERSION，
         // 服務聽到這個 key 改變就知道該重載索引，不必等使用者重開輸入法。
@@ -298,6 +302,7 @@ class DictionaryDownloader(private val context: Context) {
             obj.put("t9", entry.t9)
             obj.put("char", entry.char)
             obj.put("frequency", entry.frequency)
+            obj.put("originalOrder", entry.originalOrder)
             entriesArray.put(obj)
         }
         root.put("entries", entriesArray)

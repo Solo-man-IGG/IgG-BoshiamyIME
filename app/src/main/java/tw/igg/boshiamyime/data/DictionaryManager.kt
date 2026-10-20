@@ -159,7 +159,8 @@ class DictionaryManager(private val context: Context) {
                 t9 = obj.optString("t9", ""),
                 char = obj.getString("char"),
                 frequency = obj.optInt("frequency", 0),
-                phrases = emptyList()
+                phrases = emptyList(),
+                originalOrder = obj.optInt("originalOrder", 0)
             )
 
             newAll.add(entry)
@@ -256,14 +257,28 @@ class DictionaryManager(private val context: Context) {
 
     private fun getEffectiveFrequency(entry: DictionaryEntry): Int {
         val userFreq = usageFrequency[entry.char] ?: 0
-        return entry.frequency + userFreq * 1000
+        if (userFreq >= 3) {
+            return entry.frequency + userFreq * 1000
+        }
+        // 尚未學習（< 3 次）維持原始排序基準，原始順序越前面越優先
+        return Int.MAX_VALUE / 2 - entry.originalOrder
     }
 
     fun effectiveFrequency(code: String, char: String): Int {
         val userFreq = usageFrequency[char] ?: 0
-        val static = synchronized(indexLock) {
-            codeIndex[code]?.firstOrNull { it.char == char }?.frequency
+        val entry = synchronized(indexLock) {
+            codeIndex[code]?.firstOrNull { it.char == char }
+        }
+        val static = entry?.frequency ?: 0
+        if (userFreq >= 3) {
+            return static + userFreq * 1000
+        }
+        val orig = entry?.originalOrder ?: 0
+        return Int.MAX_VALUE / 2 - orig
+    }
+        val orig = synchronized(indexLock) {
+            codeIndex[code]?.firstOrNull { it.char == char }?.originalOrder
         } ?: 0
-        return static + userFreq * 1000
+        return orig
     }
 }

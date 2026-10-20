@@ -5,5 +5,6 @@ data class DictionaryEntry(
     val t9: String,
     val char: String,
     val frequency: Int = 0,
-    val phrases: List<String> = emptyList()
+    val phrases: List<String> = emptyList(),
+    val originalOrder: Int = 0
 )
