@@ -19,8 +19,8 @@ class DictionaryDownloader(private val context: Context) {
         private const val TAG = "DictionaryDownloader"
         private const val CIN_BASE_URL =
             "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/"
-        private const val CIN_PRIMARY = "uniliu.cin"
-        private const val CIN_SUPPLEMENT = "boshiamy.cin"
+        private const val CIN_PRIMARY = "boshiamy.cin"
+        private const val CIN_SUPPLEMENT = "uniliu.cin"
 
         // 字頻與簡體字集放在本專案 repo，供下載器套用。
         // 放在 GitHub 而非打包進 APK 的理由：字頻可獨立更新，且讓「下載版」
@@ -106,18 +106,22 @@ class DictionaryDownloader(private val context: Context) {
          * 以字去重時這些別名碼一筆都留不下來。
          *
          * 以配對去重則是兩套取碼並存：使用者熟悉哪套都能打出來。
-         * 兩表字集幾乎重疊，所以實際只多 295 筆（97,157 → 97,452），字數不變。
-         * 代價是部分碼的候選數增加（如 a, 由 2 個變 4 個），但候選排序本來就
-         * 以字頻優先、使用者自訂頻率 ×1000 壓過靜態值，實際看到的仍是常用字。
+         * 兩表字集幾乎重疊，合併後共 97,453 筆；代價是部分碼的候選數增加
+         * （如 a, 由 2 個變 4 個）。
+         *
+         * 排序：boshiamy.cin 為主，完全依原始檔序；uniliu.cin 只補 boshiamy
+         * 沒有的「碼 + 字」配對，接在後面並保留其原始相對順序。候選未學習前
+         * 就照這個順序顯示，不再用字頻或碼長重排。
          */
         internal fun mergeCins(primary: String, supplement: String): List<DictionaryEntry> {
-            // boshiamy.cin 優先且依其原始順序；uniliu.cin 補缺字，追加到後面且保留其原始相對順序
             val main = parseCinFile(primary)
             val seen = HashSet<Pair<String, String>>(main.size * 2)
             for (e in main) seen.add(e.code to e.char)
 
             val extra = parseCinFile(supplement).filter { seen.add(it.code to it.char) }
-            return (main + extra)
+            return (main + extra).mapIndexed { index, entry ->
+                if (entry.originalOrder == index) entry else entry.copy(originalOrder = index)
+            }
         }
 
         private fun parseCinFile(cinContent: String): List<DictionaryEntry> {
@@ -128,7 +132,7 @@ class DictionaryDownloader(private val context: Context) {
                 'a' to "2", 'b' to "2", 'c' to "2",
                 'd' to "3", 'e' to "3", 'f' to "3",
                 'g' to "4", 'h' to "4", 'i' to "4",
-                'j' to "5", 'k' to "5', 'l' to "5",
+                'j' to "5", 'k' to "5", 'l' to "5",
                 'm' to "6", 'n' to "6", 'o' to "6",
                 'p' to "7", 'q' to "7", 'r' to "7", 's' to "7",
                 't' to "8", 'u' to "8", 'v' to "8",
@@ -171,8 +175,8 @@ class DictionaryDownloader(private val context: Context) {
             }
             return entries
         }
-        }
-            // 公開給輸入法服務訂閱：下載完成時會寫入 KEY_VERSION，
+
+        // 公開給輸入法服務訂閱：下載完成時會寫入 KEY_VERSION，
         // 服務聽到這個 key 改變就知道該重載索引，不必等使用者重開輸入法。
         const val PREFS_NAME = "boshiamy_dict"
         const val KEY_VERSION = "dict_version"
@@ -278,7 +282,7 @@ class DictionaryDownloader(private val context: Context) {
             append(DATA_CHARC_COUNT).append(':').append(DATA_SIMPLIFIED).append('\n')
             for (e in entries) {
                 append(e.code).append('|').append(e.char).append('|')
-                .append(e.frequency).append('\n')
+                .append(e.frequency).append('|').append(e.originalOrder).append('\n')
             }
         }
         val hash = digest.digest(payload.toByteArray(Charsets.UTF_8))

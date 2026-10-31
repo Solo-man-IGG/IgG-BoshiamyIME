@@ -14,6 +14,11 @@ class DictionaryManager(private val context: Context) {
     companion object {
         private const val TAG = "DictionaryManager"
         private const val ASSETS_DIR = "tables"
+
+        /** 同一個「碼 + 字」被選滿這個次數後，才開始影響候選順序。 */
+        const val LEARN_THRESHOLD = 3
+
+        private const val USAGE_SEPARATOR = "|"
     }
 
     /**
@@ -60,21 +65,29 @@ class DictionaryManager(private val context: Context) {
     fun loadUsageFrequency(prefs: SharedPreferences) {
         usageFrequency.clear()
         for ((key, value) in prefs.all) {
-            if (key.startsWith("freq_")) {
-                val char = key.removePrefix("freq_")
-                usageFrequency[char] = value as? Int ?: 0
-            }
+            if (!key.startsWith("freq_")) continue
+            // 舊版只記「字」，無法對應到字根，直接忽略（不再遷移）。
+            val payload = key.removePrefix("freq_")
+            val separator = payload.indexOf(USAGE_SEPARATOR)
+            if (separator <= 0 || separator == payload.lastIndex) continue
+            val code = payload.substring(0, separator)
+            val char = payload.substring(separator + 1)
+            val count = value as? Int ?: continue
+            if (count > 0) usageFrequency[usageKey(code, char)] = count
         }
-        Log.i(TAG, "Loaded ${usageFrequency.size} usage frequency entries")
+        Log.i(TAG, "Loaded ${usageFrequency.size} learned code+char entries")
     }
 
-    fun getUserFrequency(char: String): Int {
-        return usageFrequency[char] ?: 0
+    fun getUserFrequency(code: String, char: String): Int {
+        return usageFrequency[usageKey(code, char)] ?: 0
     }
 
-    fun recordUsage(char: String) {
-        usageFrequency[char] = (usageFrequency[char] ?: 0) + 1
+    fun recordUsage(code: String, char: String) {
+        val key = usageKey(code, char)
+        usageFrequency[key] = (usageFrequency[key] ?: 0) + 1
     }
+
+    private fun usageKey(code: String, char: String): String = code + USAGE_SEPARATOR + char
 
     fun loadLearnedAssociations(prefs: SharedPreferences) {
         learnedAssociations.clear()
@@ -160,7 +173,8 @@ class DictionaryManager(private val context: Context) {
                 char = obj.getString("char"),
                 frequency = obj.optInt("frequency", 0),
                 phrases = emptyList(),
-                originalOrder = obj.optInt("originalOrder", 0)
+                // 舊版字典沒有這個欄位；至少用檔案內的先後順序當 fallback。
+                originalOrder = obj.optInt("originalOrder", i)
             )
 
             newAll.add(entry)
@@ -211,13 +225,11 @@ class DictionaryManager(private val context: Context) {
     }
 
     fun lookup(code: String): List<DictionaryEntry> {
-        val hit = synchronized(indexLock) { codeIndex[code] }
-        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        return synchronized(indexLock) { codeIndex[code] } ?: emptyList()
     }
 
     fun lookupPrefix(prefix: String): List<DictionaryEntry> {
-        val hit = synchronized(indexLock) { codePrefixIndex[prefix] }
-        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        return synchronized(indexLock) { codePrefixIndex[prefix] } ?: emptyList()
     }
 
     fun lookupByChar(char: String): DictionaryEntry? {
@@ -226,13 +238,11 @@ class DictionaryManager(private val context: Context) {
     }
 
     fun lookupT9(t9Code: String): List<DictionaryEntry> {
-        val hit = synchronized(indexLock) { t9Index[t9Code] }
-        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        return synchronized(indexLock) { t9Index[t9Code] } ?: emptyList()
     }
 
     fun lookupT9Prefix(t9Prefix: String): List<DictionaryEntry> {
-        val hit = synchronized(indexLock) { t9PrefixIndex[t9Prefix] }
-        return hit?.sortedByDescending { getEffectiveFrequency(it) } ?: emptyList()
+        return synchronized(indexLock) { t9PrefixIndex[t9Prefix] } ?: emptyList()
     }
 
     fun getAssociations(char: String): List<String> {
@@ -255,30 +265,4 @@ class DictionaryManager(private val context: Context) {
 
     fun getEntryCount(): Int = allEntries.size
 
-    private fun getEffectiveFrequency(entry: DictionaryEntry): Int {
-        val userFreq = usageFrequency[entry.char] ?: 0
-        if (userFreq >= 3) {
-            return entry.frequency + userFreq * 1000
-        }
-        // 尚未學習（< 3 次）維持原始排序基準，原始順序越前面越優先
-        return Int.MAX_VALUE / 2 - entry.originalOrder
-    }
-
-    fun effectiveFrequency(code: String, char: String): Int {
-        val userFreq = usageFrequency[char] ?: 0
-        val entry = synchronized(indexLock) {
-            codeIndex[code]?.firstOrNull { it.char == char }
-        }
-        val static = entry?.frequency ?: 0
-        if (userFreq >= 3) {
-            return static + userFreq * 1000
-        }
-        val orig = entry?.originalOrder ?: 0
-        return Int.MAX_VALUE / 2 - orig
-    }
-        val orig = synchronized(indexLock) {
-            codeIndex[code]?.firstOrNull { it.char == char }?.originalOrder
-        } ?: 0
-        return orig
-    }
 }

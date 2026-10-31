@@ -351,14 +351,14 @@ class BoshiamyInputMethodService : InputMethodService(),
                     }
                 engineManager.keyboardMode == KeyboardMode.T9 -> {
                     if (!engineManager.isEmpty) {
-                        if (commitFirstCandidate()) {
+                        if (commitFirstCandidate(learn = false)) {
                             commitDirectText(" ")
                         }
                     } else {
                         commitDirectText(" ")
                     }
                 }
-                !engineManager.isEmpty -> commitFirstCandidate()
+                !engineManager.isEmpty -> commitFirstCandidate(learn = false)
                 else -> commitDirectText(" ")
             }
             "⇧" -> {
@@ -589,7 +589,7 @@ class BoshiamyInputMethodService : InputMethodService(),
             showInputError()
             return false
         }
-        commitCandidate(candidates.first())
+        commitCandidate(candidates.first(), learn = false)
         return true
     }
 
@@ -602,17 +602,17 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
     }
 
-    private fun commitFirstCandidate(): Boolean {
+    private fun commitFirstCandidate(learn: Boolean = true): Boolean {
         if (engineManager.keyboardMode == KeyboardMode.QWERTY) {
             val exact = engineManager.getExactCandidates()
             if (exact.isNotEmpty()) {
-                commitCandidate(exact.first())
+                commitCandidate(exact.first(), learn)
                 return true
             }
             // 碼還沒打完（候選列是用前綴比對出來的）時，按空白要送出畫面上看到的第一位
             val visible = engineManager.getCandidates()
             if (visible.isNotEmpty()) {
-                commitCandidate(visible.first())
+                commitCandidate(visible.first(), learn)
                 return true
             }
             showInputError()
@@ -620,7 +620,7 @@ class BoshiamyInputMethodService : InputMethodService(),
         } else {
             val candidates = engineManager.getCandidates()
             if (candidates.isNotEmpty()) {
-                commitCandidate(candidates.first())
+                commitCandidate(candidates.first(), learn)
                 return true
             } else {
                 showInputError()
@@ -668,14 +668,17 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
     }
 
-    private fun commitCandidate(candidate: Candidate) {
+    private fun commitCandidate(candidate: Candidate, learn: Boolean = true) {
         val inputConnection = currentInputConnection ?: return
+        val mode = engineManager.keyboardMode
         inputConnection.commitText(candidate.char, 1)
 
         val firstChar = candidate.char.firstOrNull()?.toString() ?: ""
         val lastChar = candidate.char.lastOrNull()?.toString() ?: ""
 
-        trackUsage(firstChar)
+        if (learn && mode != KeyboardMode.ZHUYIN && candidate.code.isNotEmpty()) {
+            trackUsage(candidate.code, firstChar)
+        }
         if (lastCommittedChar.isNotEmpty()) {
             dictionaryManager.recordBigram(lastCommittedChar, firstChar)
             saveLearnedAssociations()
@@ -713,10 +716,11 @@ class BoshiamyInputMethodService : InputMethodService(),
         }
     }
 
-    private fun trackUsage(char: String) {
-        val current = prefs.getInt("freq_$char", 0)
-        prefs.edit { putInt("freq_$char", current + 1) }
-        dictionaryManager.recordUsage(char)
+    private fun trackUsage(code: String, char: String) {
+        val key = "freq_${code}|$char"
+        val current = prefs.getInt(key, 0)
+        prefs.edit { putInt(key, current + 1) }
+        dictionaryManager.recordUsage(code, char)
     }
 
     @SuppressLint("MissingPermission")

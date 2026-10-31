@@ -18,7 +18,8 @@ class LookupEngine(private val dictionary: DictionaryManager) {
                     code = entry.code,
                     char = entry.char,
                     frequency = entry.frequency,
-                    isExactMatch = true
+                    isExactMatch = true,
+                    originalOrder = entry.originalOrder
                 )
             }
             .sortedWith(candidateOrder)
@@ -31,7 +32,8 @@ class LookupEngine(private val dictionary: DictionaryManager) {
                     code = entry.code,
                     char = entry.char,
                     frequency = entry.frequency,
-                    isExactMatch = entry.code == code
+                    isExactMatch = entry.code == code,
+                    originalOrder = entry.originalOrder
                 )
             }
             .sortedWith(candidateOrder)
@@ -46,7 +48,8 @@ class LookupEngine(private val dictionary: DictionaryManager) {
                 Candidate(
                     code = entry?.code ?: "",
                     char = assocChar,
-                    frequency = entry?.frequency ?: 0
+                    frequency = entry?.frequency ?: 0,
+                    originalOrder = entry?.originalOrder ?: 0
                 )
             }.take(MAX_ASSOCIATIONS)
     }
@@ -58,11 +61,21 @@ class LookupEngine(private val dictionary: DictionaryManager) {
         if (aGlyph != bGlyph) return@Comparator if (aGlyph) -1 else 1
         // 1. 完全命中優先
         if (a.isExactMatch != b.isExactMatch) return@Comparator if (a.isExactMatch) -1 else 1
-        // 2. 有效使用次數優先（使用者學過的字要能浮到前面）
-        val aFreq = dictionary.effectiveFrequency(a.code, a.char)
-        val bFreq = dictionary.effectiveFrequency(b.code, b.char)
-        if (aFreq != bFreq) return@Comparator bFreq.compareTo(aFreq)
-        // 3. 同頻率時短碼在前（打字省事）
+        // 2. 簡體專用字沉到正體之後
+        val aSimplified = a.frequency < 0
+        val bSimplified = b.frequency < 0
+        if (aSimplified != bSimplified) return@Comparator if (aSimplified) 1 else -1
+        // 3. 同一個「碼 + 字」選滿 3 次才前移；未滿 3 次完全不影響原順序
+        val aCount = dictionary.getUserFrequency(a.code, a.char)
+        val bCount = dictionary.getUserFrequency(b.code, b.char)
+        val aLearned = aCount >= DictionaryManager.LEARN_THRESHOLD
+        val bLearned = bCount >= DictionaryManager.LEARN_THRESHOLD
+        if (aLearned != bLearned) return@Comparator if (aLearned) -1 else 1
+        if (aLearned && aCount != bCount) return@Comparator bCount.compareTo(aCount)
+        // 4. 其餘照 boshiamy.cin 原始檔序；同序時短碼在前
+        if (a.originalOrder != b.originalOrder) {
+            return@Comparator a.originalOrder.compareTo(b.originalOrder)
+        }
         a.code.length.compareTo(b.code.length)
     }
 }

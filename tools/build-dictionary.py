@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-由萬國蝦米碼表產生 app/src/main/assets/tables/standard/dictionary.json
+由嘸蝦米碼表產生 app/src/main/assets/tables/standard/dictionary.json
 
+排序來源：boshiamy.cin 原始檔序（主）；uniliu.cin 只補缺字（副）
 字頻來源：教育部語文司「常用字字頻表」表一（5,731 字，原始出現頻次）
 簡體字降權：OpenCC TSCharacters.txt（只存在於簡體的字）
-碼表來源：chinese-opendesktop/cin-tables（CC0-1.0）uniliu.cin
+碼表來源：chinese-opendesktop/cin-tables（CC0-1.0）
 
 用法：
-    python3 tools/build-dictionary.py                     # 用 .cache 內的 uniliu.cin 產生字典
-    python3 tools/build-dictionary.py --cin PATH          # 指定 .cin
-    python3 tools/build-dictionary.py --refresh-cin       # 重新下載 uniliu.cin
+    python3 tools/build-dictionary.py                     # 用 .cache 內的 boshiamy.cin 產生字典
+    python3 tools/build-dictionary.py --cin PATH          # 指定主 .cin
+    python3 tools/build-dictionary.py --refresh-cin       # 重新下載 boshiamy.cin
     python3 tools/build-dictionary.py --refresh-charcount # 從教育部 PDF 重建字頻表
     python3 tools/build-dictionary.py --refresh-simplified# 從 OpenCC 重建簡體字集
     python3 tools/build-dictionary.py --out PATH
@@ -32,8 +33,8 @@ TOOLS = os.path.join(ROOT, "tools")
 DATA = os.path.join(TOOLS, "data")
 CACHE = os.path.join(TOOLS, ".cache")
 
-CIN_URL = "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/uniliu.cin"
-CIN_NAME = "uniliu.cin"
+CIN_URL = "https://raw.githubusercontent.com/chinese-opendesktop/cin-tables/master/boshiamy.cin"
+CIN_NAME = "boshiamy.cin"
 CHARCOL_URL = "https://language.moe.gov.tw/001/Upload/files/SITE_CONTENT/M0001/BIAU1.zip"
 OPENCC_URL = "https://raw.githubusercontent.com/BYVoid/OpenCC/master/data/dictionary/TSCharacters.txt"
 OPENCC_ST_URL = "https://raw.githubusercontent.com/BYVoid/OpenCC/master/data/dictionary/STCharacters.txt"
@@ -53,11 +54,9 @@ CODE_PATTERN = re.compile(r"^[a-z,.'\[\]]+$")
 # 萬國蝦米的假名一律帶 j 前綴與逗號（ja, / jka, / jn,）本就是為了避開這類撞碼。
 KANA_PATCH = [("jno,", "の")]
 
-# 同一 repo 的 boshiamy.cin（劉重次原廠嘸蝦米）獨有的字，主要是 № ⅰ ① 々 ゞ
-# ヂ ヴ 等萬國蝦米未收錄的符號與符號用字（日文也會用到 々 〆 ヂ ヅ ヴ）。
-# 兩表的漢字覆蓋幾乎重疊（原廠僅少 7,834 個漢字卻多 42 字），故直接併入，
-# 讓使用者不必在兩份碼表之間切換。
-SUPPLEMENT_CIN = ("boshiamy.cin",)
+# 同一 repo 的 uniliu.cin（萬國蝦米）只補 boshiamy.cin 沒有的「碼 + 字」，
+# 接在主表後面並保留其原始相對順序（不重排、不蓋掉原廠順序）。
+SUPPLEMENT_CIN = ("uniliu.cin",)
 T9_MAP = {
     **dict.fromkeys("abc", "2"),
     **dict.fromkeys("def", "3"),
@@ -130,29 +129,24 @@ def parse_cin(path):
     for code, char in KANA_PATCH:
         if not any(c == char for _co, c in entries):
             entries.append((code, char))
-    # Python 的排序是穩定的，同碼的字維持 .cin 內的原始順序作為最終排序依據
-    entries.sort(key=lambda e: e[0])
     return entries
 
 
 def merge_supplements(entries):
-    """把 boshiamy.cin 獨有的字併進來（萬國蝦米未收錄的符號、々 〆 ヂ ヴ 等）。"""
-    existing = {char for _code, char in entries}
+    """把 uniliu.cin 獨有的「碼 + 字」接在主表後面，去重主鍵與 App 一致。"""
+    existing = {(code, char) for code, char in entries}
     added = []
     for name in SUPPLEMENT_CIN:
         path = os.path.join(CACHE, name)
         if not os.path.exists(path):
             raise SystemExit(f"找不到 {path}，請先下載 {name} 到 tools/.cache/")
         for code, char in parse_cin(path):
-            if char in existing:
+            if (code, char) in existing:
                 continue
-            existing.add(char)
+            existing.add((code, char))
             added.append((code, char))
     entries.extend(added)
-    entries.sort(key=lambda e: e[0])
     return added
-    entries.sort(key=lambda e: e[0])
-    return entries
 
 
 def refresh_cin():
@@ -288,8 +282,8 @@ def static_frequency(char, counts):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="產生標準（萬國蝦米）字典")
-    parser.add_argument("--cin", help="uniliu.cin 路徑（預設用 tools/.cache/）")
+    parser = argparse.ArgumentParser(description="產生標準（嘸蝦米）字典")
+    parser.add_argument("--cin", help="boshiamy.cin 路徑（預設用 tools/.cache/）")
     parser.add_argument("--out", default=DEFAULT_OUT, help="輸出 dictionary.json")
     parser.add_argument("--refresh-cin", action="store_true")
     parser.add_argument("--refresh-charcount", action="store_true")
@@ -320,18 +314,17 @@ def main():
     simplified = load_simplified()
 
     pairs = parse_cin(cin)
-    print(f"讀入 {os.path.basename(cin)}：{len(pairs):,} 筆")
+    print(f"讀入主碼表 {os.path.basename(cin)}：{len(pairs):,} 筆")
 
     supplemented = merge_supplements(pairs)
     print(
-        f"併入 {'+'.join(SUPPLEMENT_CIN)} 獨有字：{len(supplemented):,} 筆"
-        f"（{''.join(sorted(c for _co, c in supplemented))}）"
+        f"併入 {'+'.join(SUPPLEMENT_CIN)} 獨有配對：{len(supplemented):,} 筆"
     )
     print(f"字頻表 {len(counts):,} 字、簡體字集 {len(simplified):,} 字")
 
     out_entries = []
     stats = {"with_freq": 0, "simplified": 0, "zero": 0}
-    for code, char in pairs:
+    for order, (code, char) in enumerate(pairs):
         freq = static_frequency(char, counts)
         if char in simplified:
             # 簡體字保留其正體的頻次量體，但整體壓到負數區，確保一定排在正體後面
@@ -341,13 +334,19 @@ def main():
             stats["with_freq"] += 1
         else:
             stats["zero"] += 1
-        out_entries.append({"code": code, "t9": to_t9(code), "char": char, "frequency": freq})
+        out_entries.append({
+            "code": code,
+            "t9": to_t9(code),
+            "char": char,
+            "frequency": freq,
+            "originalOrder": order,
+        })
 
     root = {
         "version": "bundled",
         "encoding": "boshiamy-standard",
         "source": "https://github.com/chinese-opendesktop/cin-tables",
-        "source_file": CIN_NAME,
+        "source_file": CIN_NAME + " + " + " + ".join(SUPPLEMENT_CIN),
         "license": "CC0-1.0",
         "frequency_source": "教育部語文司 常用字字頻表 表一（5,731 字，對數壓縮至 1-999）",
         "entries": out_entries,

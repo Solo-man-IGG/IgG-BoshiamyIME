@@ -106,6 +106,28 @@ class DictionaryDownloaderTest {
     }
 
     @Test
+    fun 候選順序以主碼表原始檔序為主() {
+        // 主表故意用 zz→a 的遞減碼序，證明不會被 sortedBy(code) 重排。
+        val primary = """
+            %chardef begin
+            zz	龍
+            a	馬
+            %chardef end
+        """.trimIndent()
+        val supplement = """
+            %chardef begin
+            bb	鹿
+            aa	龜
+            %chardef end
+        """.trimIndent()
+
+        val merged = DictionaryDownloader.mergeCins(primary, supplement)
+
+        assertEquals(listOf("龍", "馬", "鹿", "龜"), merged.map { it.char })
+        assertEquals(listOf(0, 1, 2, 3), merged.map { it.originalOrder })
+    }
+
+    @Test
     fun 合併以碼字配對去重而非以字去重() {
         // 兩表取碼哲學不同：あ 在 uniliu 是 ja,、在 boshiamy 是 a,。
         // 若以字去重，a, 會被整筆丟掉；必須以配對去重才能兩套並存。

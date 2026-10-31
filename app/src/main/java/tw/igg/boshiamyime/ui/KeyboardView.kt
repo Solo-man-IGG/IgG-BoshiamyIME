@@ -554,12 +554,15 @@ class KeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP -> {
                 val key = getKeyAt(event.x, event.y)
+                // pressedKey 為 null 代表這個手勢不是從按鍵上開始的（或已收尾）；
+                // 重複送來的 ACTION_UP 不可再送一次字，否則英文會出現同字母連發。
+                val hadPressedKey = pressedKey != null
                 longPressHandler.removeCallbacksAndMessages(null)
                 deleteRepeatHandler.removeCallbacks(deleteRepeatRunnable)
                 pressedKey = null
                 invalidate()
 
-                if (key != null && !longPressTriggered && !spaceDragActive) {
+                if (hadPressedKey && key != null && !longPressTriggered && !spaceDragActive) {
                     if (currentLayout == KeyboardLayout.EMOJI) {
                         val tabIndex = resolveEmojiTabKey(key)
                         if (tabIndex >= 0) {

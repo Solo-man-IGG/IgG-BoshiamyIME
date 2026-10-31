@@ -4,5 +4,6 @@ data class Candidate(
     val code: String,
     val char: String,
     val frequency: Int = 0,
-    val isExactMatch: Boolean = false
+    val isExactMatch: Boolean = false,
+    val originalOrder: Int = 0
 )
