@@ -1,0 +1,6 @@
+v1.3.0 (versionCode 33)
+• Candidates now follow the original boshiamy.cin order; uniliu.cin only fills gaps
+• Learning is per code+character and moves a candidate up after 3 picks; space commits do not count
+• T9 follows Boshiamy order; simplified-only characters sink to the bottom
+• Fixed a possible repeated English letter from duplicate ACTION_UP
+• Redownload the dictionary in Settings to apply the new order
